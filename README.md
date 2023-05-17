@@ -1,2 +1,11 @@
 # sobonelib
 This repository contains code which runs on Beaglebone Black microcontrollers. This code is ment to interact with OCS agents but does not fit within the standard agent structure. Instead these pieces of code run as independent processes on the Beaglebone microcontrollers and interact with agents through UDP data packets.
+
+## Beaglebone Black Microcontrollers
+[Beaglebone Black's](https://beagleboard.org/black) are off the shelf microcontrollers with ~80 configurable pins (GPIO, PWM, PRU, etc) and an onboard linux kernal. Each Beaglebone has two so called "Programmable Real time Units (PRUs)" which are able to independently run compiled code on 200 MHz processors. These PRUs have access to shared memory addresses and can query/change the state of specific PRU pins. The 200 MHz clock speed is a significant improvement over similar microcontrollers (16 MHz for Arduino Microcontrollers) and improves accuracy when measuring the state of a rapidly changing signal. Unfortunately, programming with the PRU's is not well documented and requires additional steps beyond what a typical user might understand.
+
+### hwp_encoder
+Beaglebone code for the hwp_encoder agent. This code continually records rising/falling edges from two encoder signals (one primary one quadrature) and one IRIG-B timing signal. Encoder collection runs on PRU1 while IRIG-B collection runs on PRU0. Data is stored at shared memory addresses so it can be put into packets by the main processor.
+
+### hwp_gripper
+Beaglebone code for the hwp_gripper agent. This code is split into two independent processes. The first process runs on the PRU's and periodically records the state of six encoder signals (two for each actuator) and six limit switch signals (two for each actuator; one for the warm grip location and one for the cold grip location). Encoder collection runs on PRU1 while limit switch collection runs on PRU0. Data is stored at shared memory addresses so it can be put into packets by the main processor. The second process is a simple python script, which acts a server to process incomming control commands. This script accepts a socket connection from the agent and converts commands received into state changes of the Beaglebone's pins.
