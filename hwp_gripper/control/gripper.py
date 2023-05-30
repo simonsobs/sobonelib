@@ -48,15 +48,15 @@ class Gripper:
         self.steps_pos["30"] = (+0.0, +0.0, +5.0)
 
     # ***** Public Methods *****
-    def ON(self):
+    def ON(self, log=[]):
         """ Turn the controller on """
-        return self.CTL.ON()
+        return self.CTL.ON(log=log)
 
-    def OFF(self):
+    def OFF(self, log=[]):
         """ Turn the controller off """
-        return self.CTL.OFF()
+        return self.CTL.OFF(log=log)
 
-    def MOVE(self, mode, dist, axis_no):
+    def MOVE(self, mode, dist, axis_no, log=[]):
         """
         Move a specified motor a specified distance
 
@@ -67,95 +67,97 @@ class Gripper:
         """
 
         # Execute steps
-        steps = self._select_steps(mode, dist, axis_no)
+        steps, log = self._select_steps(mode, dist, axis_no, log=log)
         if steps is None:
-            print(
+            log.append(
                 "MOVE aborted in Gripper.MOVE() due to no selected steps")
-            return False
+            return False, log
         for st in steps:
-            if self.CTL.STEP(st, axis_no):
+            result, log = self.CTL.STEP(st, axis_no, log=log)
+            if result:
                 continue
             else:
-                print(
+                log.append(
                     "MOVE aborted in Gripper.MOVE() due to "
                     "CTL.STEP() returning False")
                 # self.INP()
-                return False
-        print(
+                return False, log
+        log.append(
             "MOVE in Gripper.MOVE() completed successfully")
 
-        return self.INP()
+        return self.INP(log=log)
 
-    def HOME(self):
+    def HOME(self, log=[]):
         """ Home all motors """
         # Home all motors
-        if self.CTL.HOME():
-            print(
+        result, log = self.CTL.HOME(log=log)
+        if result:
+            log.append(
                 "HOME operation in Gripper.HOME() completed")
-            return True
+            return True, log
         else:
-            print(
+            log.append(
                 "HOME operation failed in Gripper.HOME() due to CTL.HOME() returning False")
-            print(
+            log.append(
                 "Actuators may be at unknown positions due to failed home operation")
-            return False
+            return False, log
 
-    def ALARM(self):
+    def ALARM(self, log=[]):
         """ Return the ALARM state """
-        return self.CTL.ALARM()
+        return self.CTL.ALARM(log=log)
 
-    def RESET(self):
+    def RESET(self, log=[]):
         """ Reset the ALARM """
         # Obtain the alarm group
-        group = self.CTL.ALARM_GROUP()
+        group, log = self.CTL.ALARM_GROUP(log=log)
         if group is None:
-            print(
+            log.append(
                 "RESET aborted in Gripper.RESET() due to no detected alarm")
-            return False
+            return False, log
         elif group == "B" or group == "C":
-            print(
+            log.append(
                 "Clearing Alarm group '%s' via a RESET." % (group))
-            return self.CTL.RESET()
+            return self.CTL.RESET(log=log)
         elif group == "D":
-            print(
+            log.append(
                 "Clearing Alarm group '%s' via a RESET" % (group))
-            return self.CTL.RESET()
+            return self.CTL.RESET(log=log)
         elif group == "E":
-            print(
+            log.append(
                 "RESET failed in Gripper.RESET() due to alarm group '%s' "
                 "detected. Power cycle of controller and motors required"
                 % (group))
-            return False
+            return False, log
         else:
-            print(
+            log.append(
                 "RESET aborted in Gripper.RESET() due to unknown alarm group")
-            return False
+            return False, log
 
         if not self.ALARM():
-            print("Alarm successfully reset")
-            return True
+            log.append("Alarm successfully reset")
+            return True, log
         else:
-            print(
+            log.append(
                 "RESET aborted in Gripper.RESET() due to unknown error")
-            return False
+            return False, log
 
-    def INP(self):
+    def INP(self, log=[]):
         """ Return control INP """
-        outs = self.CTL.INP()
+        outs, log = self.CTL.INP(log=log)
         # for i in range(3):
-        #    print("INP%d = %d" % (i+1, outs[i]))
-        return outs
+        #    log.append("INP%d = %d" % (i+1, outs[i]))
+        return outs, log
 
-    def ACT(self, axis):
-        outs = self.CTL.ACT(axis)
-        return outs
+    def ACT(self, axis, log=[]):
+        outs, log = self.CTL.ACT(axis, log=log)
+        return outs, log
 
-    def STATUS(self):
+    def STATUS(self, log=[]):
         """ Return control status """
-        return self.CTL.STATUS()
+        return self.CTL.STATUS(log=log)
 
     # ***** Helper Methods *****
-    def _select_steps(self, mode, dist, axis_no):
+    def _select_steps(self, mode, dist, axis_no, log=[]):
         """ Select the steps to move a specified motor """
         d = dist
         steps_to_do = []
@@ -166,10 +168,10 @@ class Gripper:
             elif mode == 'POS':
                 steps_to_check = self.steps_pos
             else:
-                print(
+                log.append(
                     "Did not understand mode '%s' in "
                     "GRIPPER()._select_steps()" % (mode))
-                return None
+                return None, log
             # Loop over steps to construct move from largest to smallest
             for k in list(steps_to_check.keys())[::-1]:
                 move_step = float(steps_to_check[k][axis_no-1])
@@ -185,4 +187,4 @@ class Gripper:
                     break
                 else:
                     continue
-        return steps_to_do
+        return steps_to_do, log

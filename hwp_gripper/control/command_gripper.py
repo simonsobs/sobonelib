@@ -23,27 +23,49 @@ class Command:
         if cmd == 'HELP':
             self._help()
         elif cmd == 'ON':
-            return self.GPR.ON()
+            result, log = self.GPR.ON()
+            self._print_log(log)
+            return result
         elif cmd == 'OFF':
-            return self.GPR.OFF()
+            result, log = self.GPR.OFF()
+            self._print_log(log)
+            return result
         elif cmd == 'BRAKE':
-            return self._brake(args)
+            result, log = self._brake(args)
+            self._print_log(log)
+            return result
         elif cmd == 'EMG':
-            return self._emg(args)
+            result, log = self._emg(args)
+            self._print_log(log)
+            return result
         elif cmd == 'MOVE':
-            return self._move(args)
+            result, log = self._move(args)
+            self._print_log(log)
+            return result
         elif cmd == 'HOME':
-            return self.GPR.HOME()
+            result, log = self.GPR.HOME()
+            self._print_log(log)
+            return result
         elif cmd == 'INP':
-            return self.GPR.INP()
+            result, log = self.GPR.INP()
+            self._print_log(log)
+            return result
         elif cmd == 'ACT':
-            return self._act(args)
+            result, log = self._act(args)
+            self._print_log(log)
+            return result
         elif cmd == 'ALARM':
-            return self.GPR.ALARM()
+            result, log = self.GPR.ALARM()
+            self._print_log(log)
+            return result
         elif cmd == 'RESET':
-            return self.GPR.RESET()
+            result, log = self.GPR.RESET()
+            self._print_log(log)
+            return result
         elif cmd == 'STATUS':
-            print(self.GPR.STATUS())
+            result, log = self.GPR.STATUS()
+            self._print_log(log)
+            return result
         elif cmd == 'EXIT':
             self.GPR.OFF()
             sy.exit(0)
@@ -73,146 +95,151 @@ class Command:
         print("EXIT = exit this program\n")
         return True
 
-    def _brake(self, args):
+    def _print_log(self, log):
+        try:
+            for line in log:
+                print(line)
+        except:
+            pass
+
+    def _brake(self, args, log=[]):
         ON = None
         if not (len(args) == 2 or len(args) == 3):
-            print(
+            log.append(
                 "Cannot understand 'BRAKE' arguments: %s"
                 % (' '.join(args[1:])))
-            print(
+            log.append(
                 "Usage: BRAKE ON/OFF [axis number (1-3)]")
-            return False
+            return False, log
         if args[1].upper() == 'ON':
             ON = True
         elif args[1].upper() == 'OFF':
             ON = False
         else:
-            print(
+            log.append(
                 "Cannot understand 'BRAKE' argument: %s"
                 % (args[1]))
-            print(
+            log.append(
                 "Usage: BRAKE ON/OFF [axis number (1-3)]\n")
-            return False
+            return False, log
         if len(args) == 3:
             try:
                 axis = int(args[2])
             except ValueError:
-                print(
+                log.append(
                     "Cannot understand 'BRAKE' argument: %s"
                     % (args[2]))
-                print(
+                log.append(
                     "Usage: BRAKE ON/OFF [axis number (1-3)]\n")
-                return False
+                return False, log
             if axis < 1 or axis > 3:
-                print(
+                log.append(
                     "Cannot understand 'BRAKE' argument: %s"
                     % (args[2]))
-                print(
+                log.append(
                     "Usage: BRAKE ON/OFF [axis number (1-3)]\n")
-                return False
+                return False, log
             else:
-                self.GPR.CTL.BRAKE(state=ON, axis=axis)
+                _, log = self.GPR.CTL.BRAKE(state=ON, axis=axis, log=log)
         else:
             for i in range(3):
-                self.GPR.CTL.BRAKE(state=ON, axis=i+1)
-        return True
+                _, log = self.GPR.CTL.BRAKE(state=ON, axis=i+1, log=log)
+        return True, log
 
-    def _emg(self, args):
+    def _emg(self, args, log=[]):
         ON = None
         if not (len(args) == 2 or len(args) == 3):
-            print(
+            log.append(
                 "Cannot understand 'EMG' arguments: %s"
                 % (' '.join(args[1:])))
-            print(
+            log.append(
                 "Usage: EMG ON/OFF [axis number (1-3)]")
-            return False
+            return False, log
         if args[1].upper() == 'ON':
             ON = True
         elif args[1].upper() == 'OFF':
             ON = False
         else:
-            print(
+            log.append(
                 "Cannot understand 'EMG' argument: %s"
                 % (args[1]))
-            print(
+            log.append(
                 "Usage: EMG ON/OFF [axis number (1-3)]\n")
-            return False
+            return False, log
         if len(args) == 3:
             try:
                 axis = int(args[2])
             except ValueError:
-                print(
+                log.append(
                     "Cannot understand 'EMG' argument: %s"
                     % (args[2]))
-                print(
+                log.append(
                     "Usage: EMG ON/OFF [axis number (1-3)]\n")
-                return False
+                return False, log
             if axis < 1 or axis > 3:
-                print(
+                log.append(
                     "Cannot understand 'EMG' argument: %s"
                     % (args[2]))
-                print(
+                log.append(
                     "Usage: EMG ON/OFF [axis number (1-3)]\n")
-                return False
+                return False, log
             else:
-                self.GPR.CTL.EMG(state=ON, axis=axis)
+                _, log = self.GPR.CTL.EMG(state=ON, axis=axis, log=log)
         else:
             for i in range(3):
-                self.GPR.CTL.EMG(state=ON, axis=i+1)
-        return True
+                _, log = self.GPR.CTL.EMG(state=ON, axis=i+1, log=log)
+        return True, log
 
-    def _move(self, args):
+    def _move(self, args, log=[]):
         if not len(args) == 4:
-            print(
+            log.append(
                 "Cannot understand 'MOVE' argument: %s"
                 % (' '.join(args[1:])))
-            return False
+            return False, log
         else:
             mode = str(args[1]).upper()
             if not (mode == 'PUSH' or mode == 'POS'):
-                print(
+                log.append(
                     "Cannot understand move mode '%s'. "
                     "Must be either 'PUSH' or 'POS'"
                     % (mode))
-                return False
+                return False, log
             try:
                 axis = int(args[2])
             except ValueError:
-                print(
+                log.append(
                     "Cannot understand axis number = '%s'. "
                     "Must be an integer (1-3)." % (str(axis)))
-                return False
+                return False, log
             if axis == 1 or axis == 2 or axis == 3:
                 try:
                     dist = float(args[3])
-                    result = self.GPR.MOVE(mode, dist, axis)
-                    return result
+                    result, log = self.GPR.MOVE(mode, dist, axis, log=log)
+                    return result, log
                 except ValueError:
-                    print(
+                    log.append(
                         "Cannot understand relative move distance '%s'. "
                         "Must be a float." % (str(dist)))
-                    return False
+                    return False, log
             else:
-                print(
+                log.append(
                     "Cannot understand axis number '%d'. "
                     "Must be an integer (1-3)." % (axis))
-                return False
+                return False, log
 
-    def _act(self, args):
+    def _act(self, args, log=[]):
         if not len(args) == 2:
-            print(
+            log.append(
                 "Cannot understand 'ACT' argument: %s"
                 % (' '.join(args[1:])))
-            return False
+            return False, log
         else:
             try:
                 axis = int(args[1])
             except ValueError:
-                print(
+                log.append(
                     "Cannot understand axis '%s'. "
                     "Must be an int." % (str(args[1])))
                 return False
-            result = self.GPR.ACT(axis)
-            return result
-
-
+            result, log = self.GPR.ACT(axis, log=log)
+            return result, log

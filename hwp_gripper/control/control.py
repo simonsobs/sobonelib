@@ -106,100 +106,101 @@ class Control:
         self.alarm_group["E"] = '0000'
 
     # ***** Public Methods *****
-    def ON(self):
+    def ON(self, log=[]):
         """ Turn the controller on """
         # Turn SVON on
         if not self._JXC.read(self._JXC.SVON):
             self._JXC.set_on(self._JXC.SVON)
         self._sleep()
         if not self._JXC.read(self._JXC.SVON):
-            print("Failed to turn SVON on")
-            return False
+            log.append("Failed to turn SVON on")
+            return False, log
         else:
-            print("SVON turned on in Control.ON()")
+            log.append("SVON turned on in Control.ON()")
 
         # Turn off the brakes
         if (not self._JXC.read(self._JXC.BRAKE1) or
            not self._JXC.read(self._JXC.BRAKE2) or
            not self._JXC.read(self._JXC.BRAKE3)):
-            self.BRAKE(False)
+            _, log = self.BRAKE(False, log=log)
         self._sleep()
         if (not self._JXC.read(self._JXC.BRAKE1) or
            not self._JXC.read(self._JXC.BRAKE2) or
            not self._JXC.read(self._JXC.BRAKE3)):
-            print("Failed to disengage brakes in Control.ON()")
-            return False
+            log.append("Failed to disengage brakes in Control.ON()")
+            return False, log
         else:
-            print("Disengaged brakes in Control.ON()")
+            log.append("Disengaged brakes in Control.ON()")
 
-        return True
+        return True, log
 
-    def OFF(self):
+    def OFF(self, log=[]):
         """ Turn the controller off """
         # Turn on the brakes
         if (self._JXC.read(self._JXC.BRAKE1) or
            self._JXC.read(self._JXC.BRAKE2) or
            self._JXC.read(self._JXC.BRAKE3)):
-            self.BRAKE(True)
+            _, log = self.BRAKE(True, log=log)
         self._sleep()
         if (self._JXC.read(self._JXC.BRAKE1) or
            self._JXC.read(self._JXC.BRAKE2) or
            self._JXC.read(self._JXC.BRAKE3)):
-            print("Failed to engage brakes in Control.OFF()")
-            return False
+            log.append("Failed to engage brakes in Control.OFF()")
+            return False, log
         else:
-            print("Brakes engaged in Control.OFF()")
+            log.append("Brakes engaged in Control.OFF()")
 
         # Turn SVON off
         if self._JXC.read(self._JXC.SVON):
             self._JXC.set_off(self._JXC.SVON)
         self._sleep()
         if self._JXC.read(self._JXC.SVON):
-            print("Failed turn SVON off in Control.OFF()")
-            return False
+            log.append("Failed turn SVON off in Control.OFF()")
+            return False, log
         else:
-            print("SVON turned off in Control.OFF()")
+            log.append("SVON turned off in Control.OFF()")
 
-        return True
+        return True, log
 
-    def HOME(self):
+    def HOME(self, log=[]):
         """ Home all actuators """
         # Make sure the motors are on
-        if not self.ON():
-            print("Control.HOME() aborted due to SVON not being ON")
-            return False
+        result, log = self.ON(log=log)
+        if not result:
+            log.append("Control.HOME() aborted due to SVON not being ON")
+            return False, log
         # Check SVRE
         if not self._is_powered():
-            print("Control.HOME() aborted due to SVRE not being ON -- timeout")
-            return False
+            log.append("Control.HOME() aborted due to SVRE not being ON -- timeout")
+            return False, log
         # Check for alarms
         if self._JXC.read(self._JXC.ALARM):
-            print("Control.HOME() aborted due to an alarm being triggered")
-            return False
+            log.append("Control.HOME() aborted due to an alarm being triggered")
+            return False, log
         # Check for emergency stop
         if self._JXC.read(self._JXC.ESTOP):
-            print("Control.HOME() aborted due to emergency stop being on")
-            return False
+            log.append("Control.HOME() aborted due to emergency stop being on")
+            return False, log
 
         # Home the actuators
         self._JXC.set_on(self._JXC.SETUP)
         self._sleep()
         if not self._JXC.read(self._JXC.SETUP):
-            print("Control.HOME() aborted due to failure to set SETUP to ON")
+            log.append("Control.HOME() aborted due to failure to set SETUP to ON")
         if self._wait():
-            print("'HOME' operation finished in Control.HOME()")
+            log.append("'HOME' operation finished in Control.HOME()")
             # Engage the brake
             # self.BRAKE(state=True)
             self._JXC.set_off(self._JXC.SETUP)
-            return True
+            return True, log
         else:
-            print("'HOME' operation failed in Control.HOME() due to timeout")
+            log.append("'HOME' operation failed in Control.HOME() due to timeout")
             # Engage the brake
             # self.BRAKE(state=True)
             self._JXC.set_off(self._JXC.SETUP)
-            return False
+            return False, log
 
-    def STEP(self, step_num, axis_no=None):
+    def STEP(self, step_num, axis_no=None, log=[]):
         """
         Execute specified step for the controller
 
@@ -208,24 +209,24 @@ class Control:
         axis_no (int): axis number (default is None, which enables all axes)
         """
         # Make sure the motor is turned on
-        if not self.ON():
-            print("Control.STEP() aborted due to SVON not being ON")
-            return False
+        if not self.ON(log=log):
+            log.append("Control.STEP() aborted due to SVON not being ON")
+            return False, log
         # Check for valid step number
         step_num = "%02d" % (int(step_num))
         if step_num not in self.step_inputs.keys():
-            print(
+            log.append(
                 "Control.STEP() aborted due to unrecognized "
                 "step number %02d not an " % (step_num))
-            return False
+            return False, log
         # Check that the motors aren't moving
         if self._is_moving():
-            print("Control.STEP() aborted due to BUSY being on")
-            return False
+            log.append("Control.STEP() aborted due to BUSY being on")
+            return False, log
         # Check that the motors are ready to move
         if not self._is_ready():
-            print("Control.STEP() aborted due to SETON not being on")
-            return False
+            log.append("Control.STEP() aborted due to SETON not being on")
+            return False, log
 
         # Set the inputs
         for addr in self.step_inputs[step_num]:
@@ -233,26 +234,26 @@ class Control:
         self._sleep()
         for addr in self.step_inputs[step_num]:
             if not self._JXC.read(addr):
-                print(
+                log.append(
                     "Control.STEP() aborted due to failure to set addr %d "
                     "to TRUE for step no %d" % (int(addr), step_num))
-                return False
+                return False, log
 
         # Drive the motor
         self._JXC.set_on(self._JXC.DRIVE)
         self._sleep()
         if not self._JXC.read(self._JXC.DRIVE):
-            print("Control.STEP() aborted due to failure to set DRIVE to ON")
-            return False
+            log.append("Control.STEP() aborted due to failure to set DRIVE to ON")
+            return False, log
         # Wait for the motors to stop moving
         if self._wait():
-            print(
+            log.append(
                 "Control.STEP() operation finished for step %d"
                 % (int(step_num)))
             timeout = False
         # Otherwise the operation times out
         else:
-            print(
+            log.append(
                 "STEP operation for step no %02d in Control.STEP() failed "
                 "due to timout" % (int(step_num)))
             timeout = True
@@ -262,21 +263,21 @@ class Control:
             self._JXC.set_off(addr)
         for addr in self.step_inputs[step_num]:
             if self._JXC.read(addr):
-                print(
+                log.append(
                     "Failed to reset addr %d after STEP command in "
                     "Control.STEP() for step no %02d"
                     % (int(addr), int(step_num)))
         # Turn off the drive
         self._JXC.set_off(self._JXC.DRIVE)
         if self._JXC.read(self._JXC.DRIVE):
-            print(
+            log.append(
                 "Failed to turn off DRIVE after STEP command in "
                 "Control.STEP() for step no %02d"
                 % (int(step_num)))
 
-        return not timeout
+        return not timeout, log
 
-    def HOLD(self, state=True):
+    def HOLD(self, state=True, log=[]):
         """
         Turn on and off a HOLD of the motors
 
@@ -289,42 +290,42 @@ class Control:
                 self._JXC.set_on(self._JXC.HOLD)
                 self._sleep()
                 if not self._JXC.read(self._JXC.HOLD):
-                    print(
+                    log.append(
                         "Failed to apply HOLD to moving grippers in "
                         "Control.HOLD()")
-                    return False
+                    return False, log
                 else:
-                    print("Applied HOLD to moving grippers")
-                return True
+                    log.append("Applied HOLD to moving grippers")
+                return True, log
             else:
-                print("Cannot apply HOLD when grippers are not moving")
+                log.append("Cannot apply HOLD when grippers are not moving")
                 self._JXC.set_off(self._JXC.HOLD)
                 self._sleep()
                 if self._JXC.read(self._JXC.HOLD):
-                    print(
+                    log.append(
                         "Failed to turn HOLD off after failed HOLD "
                         "operation in Control.HOLD()")
-                return False
+                return False, log
         # Turn HOLD off
         elif state is False:
             self._JXC.set_off(self._JXC.HOLD)
             self._sleep()
             if self._JXC.read(self._JXC.HOLD):
-                print(
+                log.append(
                     "Failed to turn HOLD off after failed HOLD "
                     "operation in Control.HOLD()")
-                return False
+                return False, log
             else:
-                print("HOLD set to off")
-                return True
+                log.append("HOLD set to off")
+                return True, log
         # Cannot understand HOLD argument
         else:
-            print(
+            log.append(
                 "Could not understand argument %s to Control.HOLD()"
                 % (str(state)))
-            return False
+            return False, log
 
-    def BRAKE(self, state=True, axis=None):
+    def BRAKE(self, state=True, axis=None, log=[]):
         """
         Turn the motor brakes on or off
 
@@ -339,22 +340,22 @@ class Control:
             if type(axis) is int and int(axis) > 0 and int(axis) < 4:
                 axes = [axis - 1]
             else:
-                print(
+                log.append(
                     "Could not understand axis %s passed to "
                     "Control.BRAKE()" % (str(axis)))
-                return False
+                return False, log
 
         # Set the brakes
         brakes = [self._JXC.BRAKE1, self._JXC.BRAKE2, self._JXC.BRAKE3]
         for ax in axes:
             if state:  # yes, it's inverted logic
                 self._JXC.set_off(brakes[ax])
-                print(
+                log.append(
                     "Turned on BRAKE for axis %d in Control.BRAKE()"
                     % (int(ax + 1)))
             else:
                 self._JXC.set_on(brakes[ax])
-                print(
+                log.append(
                     "Turned off BRAKE for axis %d in Control.BRAKE()"
                     % (int(ax + 1)))
         self._sleep()
@@ -365,51 +366,51 @@ class Control:
             read_out = self._JXC.read(brakes[ax])
             if state:  # yes, it's inverted logic
                 if read_out:
-                    print(
+                    log.append(
                         "Failed to turn on BRAKE for axis %d in "
                         "Control.BRAKE()" % (int(ax + 1)))
                     ret *= False
                 else:
-                    print(
+                    log.append(
                         "Successfully turned on BRAKE for axis %d "
                         "in Control.BRAKE()" % (int(ax + 1)))
                     ret *= True
             else:
                 if not read_out:
-                    print(
+                    log.append(
                         "Failed to turn off BRAKE for axis %d in "
                         "Control.BRAKE()" % (int(ax + 1)))
                     ret *= False
                 else:
-                    print(
+                    log.append(
                         "Successfully turned off BRAKE for axis %d "
                         "in Control.BRAKE()" % (int(ax + 1)))
                     ret *= True
 
-        return ret
+        return ret, log
 
-    def EMG(self, state=True, axis=None):
+    def EMG(self, state=True, axis=None, log=[]):
         if axis is None:
             axes = range(3)
         else:
             if type(axis) is int and int(axis) > 0 and int(axis) < 4:
                 axes = [axis - 1]
             else:
-                print(
+                log.append(
                     "Could not understand axis %s passed to "
                     "Control.EMG()" % (str(axis)))
-                return False
+                return False, log
 
         emg_stop = [self._JXC.EMG1, self._JXC.EMG2, self._JXC.EMG3]
         for ax in axes:
             if state:
                 self._JXC.set_on(emg_stop[ax])
-                print(
+                log.append(
                     "Turned on EMG for axis %d in Control.EMG()"
                     % (int(ax + 1)))
             else:
                 self._JXC.set_off(emg_stop[ax])
-                print(
+                log.append(
                     "Turned off EMG for axis %d in Control.EMG()"
                     % (int(ax + 1)))
         self._sleep()
@@ -419,127 +420,127 @@ class Control:
             read_out = self._JXC.read(emg_stop[ax])
             if state:
                 if not read_out:
-                    print(
+                    log.append(
                         "Failed to turn on EMG for axis %d in "
                         "Control.EMG()" % (int(ax + 1)))
                     ret *= False
                 else:
-                    print(
+                    log.append(
                         "Successfully turned on EMG for axis %d "
                         "in Control.EMG()" % (int(ax + 1)))
                     ret *= True
             else:
                 if read_out:
-                    print(
+                    log.append(
                         "Failed to turn off EMG for axis %d in "
                         "Control.EMG()" % (int(ax + 1)))
                     ret *= False
                 else:
-                    print(
+                    log.append(
                         "Successfully turned off EMG for axis %d "
                         "in Control.EMG()" % (int(ax + 1)))
                     ret *= True
 
-        return ret
+        return ret, log
 
-    def RESET(self):
+    def RESET(self, log=[]):
         """ Reset the alarm """
         if self._is_alarm():
             # Toggle the RESET pin on
             self._JXC.set_on(self._JXC.RESET)
             self._sleep()
             if not self._JXC.read(self._JXC.RESET):
-                print("Failed to turn on RESET pin in Control.RESET()")
-                return False
+                log.append("Failed to turn on RESET pin in Control.RESET()")
+                return False, log
             # Toggle the RESET pin off
             self._JXC.set_off(self._JXC.RESET)
             self._sleep()
             if self._JXC.read(self._JXC.RESET):
-                print(
+                log.append(
                     "Failed to turn off RESET pin in Control.RESET() "
                     "after RESET was performed")
-                return False
+                return False, log
             # Check whether the ALARM was reset
             if self._is_alarm():
-                print(
+                log.append(
                     "Failed to RESET ALARM state. ALARM may be immutable")
-                return False
+                return False, log
         else:
-            print(
+            log.append(
                 "RESET operation ignored in Control.RESET(). "
                 "No ALARM detected")
-        return True
+        return True, log
 
-    def OUTPUT(self):
+    def OUTPUT(self, log=[]):
         """ Read the OUTPUT pins """
         out0 = int(not self._JXC.read(self._JXC.OUT0))
         out1 = int(not self._JXC.read(self._JXC.OUT1))
         out2 = int(not self._JXC.read(self._JXC.OUT2))
         out3 = int(not self._JXC.read(self._JXC.OUT3))
-        return str(out0), str(out1), str(out2), str(out3)
+        return str(out0), str(out1), str(out2), str(out3), log
 
-    def INP(self):
+    def INP(self, log=[]):
         """ Read the INP pins """
         self.ON()
         self._sleep(1.)
         out = int(not self._JXC.read(self._JXC.INP))
-        return bool(out)
+        return bool(out), log
 
-    def ACT(self, axis):
+    def ACT(self, axis, log=[]):
         if axis == 1:
             out = int(self._JXC.read(self._JXC.ACT1))
         if axis == 2:
             out = int(self._JXC.read(self._JXC.ACT2))
         if axis == 3:
             out = int(self._JXC.read(self._JXC.ACT3))
-        print('Actuator {} is in state {}'.format(axis, out))
-        return bool(out)
+        log.append('Actuator {} is in state {}'.format(axis, out))
+        return bool(out), log
 
-    def STATUS(self):
+    def STATUS(self, log=[]):
         """ Print the control status """
-        print("CONTROL STATUS:")
-        print("IN0 = %d" % (self._JXC.read(self._JXC.IN0)))
-        print("IN1 = %d" % (self._JXC.read(self._JXC.IN1)))
-        print("IN2 = %d" % (self._JXC.read(self._JXC.IN2)))
-        print("IN3 = %d" % (self._JXC.read(self._JXC.IN3)))
-        print("IN4 = %d" % (self._JXC.read(self._JXC.IN4)))
-        print("\n")
-        print("SETUP = %d" % (self._JXC.read(self._JXC.SETUP)))
-        print("HOLD  = %d" % (self._JXC.read(self._JXC.HOLD)))
-        print("DRIVE = %d" % (self._JXC.read(self._JXC.DRIVE)))
-        print("RESET = %d" % (self._JXC.read(self._JXC.RESET)))
-        print("SVON  = %d" % (self._JXC.read(self._JXC.SVON)))
-        print("\n")
-        print("OUT0 = %d" % (not self._JXC.read(self._JXC.OUT0)))
-        print("OUT1 = %d" % (not self._JXC.read(self._JXC.OUT1)))
-        print("OUT2 = %d" % (not self._JXC.read(self._JXC.OUT2)))
-        print("OUT3 = %d" % (not self._JXC.read(self._JXC.OUT3)))
-        print("OUT4 = %d" % (not self._JXC.read(self._JXC.OUT4)))
-        print("\n")
-        print("BUSY  = %d" % (not self._JXC.read(self._JXC.BUSY)))
-        print("AREA  = %d" % (not self._JXC.read(self._JXC.AREA)))
-        print("SETON = %d" % (not self._JXC.read(self._JXC.SETON)))
-        print("INP   = %d" % (not self._JXC.read(self._JXC.INP)))
-        print("SVRE  = %d" % (not self._JXC.read(self._JXC.SVRE)))
-        print("ESTOP = %d" % (self._JXC.read(self._JXC.ESTOP)))
-        print("ALARM = %d" % (self._JXC.read(self._JXC.ALARM)))
-        print("\n")
-        print("BRAKE1 = %d" % (not self._JXC.read(self._JXC.BRAKE1)))
-        print("BRAKE2 = %d" % (not self._JXC.read(self._JXC.BRAKE2)))
-        print("BRAKE3 = %d" % (not self._JXC.read(self._JXC.BRAKE3)))
-        print("\n")
-        print("EMG1 = %d" % (self._JXC.read(self._JXC.EMG1)))
-        print("EMG2 = %d" % (self._JXC.read(self._JXC.EMG2)))
-        print("EMG3 = %d" % (self._JXC.read(self._JXC.EMG3)))
-        print("\n")
-        return True
+        log.append("CONTROL STATUS:")
+        log.append("IN0 = %d" % (self._JXC.read(self._JXC.IN0)))
+        log.append("IN1 = %d" % (self._JXC.read(self._JXC.IN1)))
+        log.append("IN2 = %d" % (self._JXC.read(self._JXC.IN2)))
+        log.append("IN3 = %d" % (self._JXC.read(self._JXC.IN3)))
+        log.append("IN4 = %d" % (self._JXC.read(self._JXC.IN4)))
+        log.append("\n")
+        log.append("SETUP = %d" % (self._JXC.read(self._JXC.SETUP)))
+        log.append("HOLD  = %d" % (self._JXC.read(self._JXC.HOLD)))
+        log.append("DRIVE = %d" % (self._JXC.read(self._JXC.DRIVE)))
+        log.append("RESET = %d" % (self._JXC.read(self._JXC.RESET)))
+        log.append("SVON  = %d" % (self._JXC.read(self._JXC.SVON)))
+        log.append("\n")
+        log.append("OUT0 = %d" % (not self._JXC.read(self._JXC.OUT0)))
+        log.append("OUT1 = %d" % (not self._JXC.read(self._JXC.OUT1)))
+        log.append("OUT2 = %d" % (not self._JXC.read(self._JXC.OUT2)))
+        log.append("OUT3 = %d" % (not self._JXC.read(self._JXC.OUT3)))
+        log.append("OUT4 = %d" % (not self._JXC.read(self._JXC.OUT4)))
+        log.append("\n")
+        log.append("BUSY  = %d" % (not self._JXC.read(self._JXC.BUSY)))
+        log.append("AREA  = %d" % (not self._JXC.read(self._JXC.AREA)))
+        log.append("SETON = %d" % (not self._JXC.read(self._JXC.SETON)))
+        log.append("INP   = %d" % (not self._JXC.read(self._JXC.INP)))
+        log.append("SVRE  = %d" % (not self._JXC.read(self._JXC.SVRE)))
+        log.append("ESTOP = %d" % (self._JXC.read(self._JXC.ESTOP)))
+        log.append("ALARM = %d" % (self._JXC.read(self._JXC.ALARM)))
+        log.append("\n")
+        log.append("BRAKE1 = %d" % (not self._JXC.read(self._JXC.BRAKE1)))
+        log.append("BRAKE2 = %d" % (not self._JXC.read(self._JXC.BRAKE2)))
+        log.append("BRAKE3 = %d" % (not self._JXC.read(self._JXC.BRAKE3)))
+        log.append("\n")
+        log.append("EMG1 = %d" % (self._JXC.read(self._JXC.EMG1)))
+        log.append("EMG2 = %d" % (self._JXC.read(self._JXC.EMG2)))
+        log.append("EMG3 = %d" % (self._JXC.read(self._JXC.EMG3)))
+        log.append("\n")
+        return True, log
 
-    def ALARM(self):
+    def ALARM(self, log=[]):
         """ Print the alarm status """
-        print("ALARM = %d" % (self._JXC.read(self._JXC.ALARM)))
-        return self._is_alarm()
+        log.append("ALARM = %d" % (self._JXC.read(self._JXC.ALARM)))
+        return self._is_alarm(), log
 
-    def ALARM_GROUP(self):
+    def ALARM_GROUP(self, log=[]):
         """ Identify the alarm group """
         # ID the alarm group
         if self._is_alarm():
@@ -547,20 +548,20 @@ class Control:
             output = ''.join(outs)
             for k in self.alarm_group.keys():
                 if output == self.alarm_group[k]:
-                    print("ALARM GROUP '%s' detected" % (k))
-                    return k
+                    log.append("ALARM GROUP '%s' detected" % (k))
+                    return k, log
                 else:
                     continue
         # Otherwise no alarm
         else:
-            print("Ignored Control.ALARM_GROUP(). No ALARM detected")
-            return None
+            log.append("Ignored Control.ALARM_GROUP(). No ALARM detected")
+            return None, log
 
         # Alarm group not understood
-        print("ALARM_GROUP id failed -- unknown output:")
+        log.append("ALARM_GROUP id failed -- unknown output:")
         for i in range(4):
-            print("OUT%d = %d" % (i, int(outs[i])))
-        return None
+            log.append("OUT%d = %d" % (i, int(outs[i])))
+        return None, log
 
     # ***** Private Methods ******
     def _sleep(self, time=None):
