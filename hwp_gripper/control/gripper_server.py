@@ -1,8 +1,7 @@
 import socket
 import os
 import sys
-import select
-import errno
+import pickle as pkl
 
 this_dir = os.path.dirname(__file__)
 sys.path.append(this_dir)
@@ -12,15 +11,16 @@ import JXC831 as jx
 import control as ct
 import gripper as gp
 import command_gripper as cg
-import gripper_client as gc
 
 class GripperServer(object):
-    def __init__(self, host_ip, command_port, return_port):
-        self.host_ip = host_ip
-        self.command_port = command_port
-        self.return_port = return_port
+    def __init__(self, port):
+        self.port = port
 
-        self.client = gc.GripperClient(self.host_ip, self.return_port, self.command_port)
+        self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.s.bind(('', self.port))
+        self.s.listen()
+
         self.data = b''
 
         self.BBB = bb.BBB()
@@ -30,13 +30,24 @@ class GripperServer(object):
         self.CMD = cg.Command(self.GPR)
 
     def process_command(self):
-        while True:
-            self.data = self.client.listen()
+        conn, addr = self.s.accept()
+        with conn:
+            print(f'Connection from: {addr}')
+            while True:
+                self.data = conn.recv(1024)
+                if not self.data:
+                    print(f'Connection ended: {addr}')
+                    break
 
-            if len(self.data) > 0:
-                return_value = self.CMD.CMD(self.data.decode(encoding = 'UTF-8'))
-                self.client.send_data(str(return_value))
+                command = self.data.decode(encoding = 'UTF-8')
+                return_dict = self.CMD.CMD(command)
+                conn.sendall(pkl.dumps(return_dict))
                 self.data = b''
 
-server = GripperServer('10.10.10.50', 8041, 8042)
-server.process_command()
+    def __exit__(self):
+        self.s.close()
+
+server = GripperServer(8041)
+print('Starting Server')
+while True:
+    server.process_command()

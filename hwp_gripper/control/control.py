@@ -544,8 +544,9 @@ class Control:
         """ Identify the alarm group """
         # ID the alarm group
         if self._is_alarm():
-            outs = self.OUTPUT()
-            output = ''.join(outs)
+            outs = self.OUTPUT(log=log)
+            output = ''.join(outs[:-1])
+            log = outs[-1]
             for k in self.alarm_group.keys():
                 if output == self.alarm_group[k]:
                     log.append("ALARM GROUP '%s' detected" % (k))

@@ -23,51 +23,62 @@ class Command:
         if cmd == 'HELP':
             self._help()
         elif cmd == 'ON':
-            result, log = self.GPR.ON()
+            result, log = self.GPR.ON(log=[])
             self._print_log(log)
-            return result
+            print(result)
+            return {'result': result, 'log': log}
         elif cmd == 'OFF':
-            result, log = self.GPR.OFF()
+            result, log = self.GPR.OFF(log=[])
             self._print_log(log)
-            return result
+            print(result)
+            return {'result': result, 'log': log}
         elif cmd == 'BRAKE':
-            result, log = self._brake(args)
+            result, log = self._brake(args, log=[])
             self._print_log(log)
-            return result
+            print(result)
+            return {'result': result, 'log': log}
         elif cmd == 'EMG':
-            result, log = self._emg(args)
+            result, log = self._emg(args, log=[])
             self._print_log(log)
-            return result
+            print(result)
+            return {'result': result, 'log': log}
         elif cmd == 'MOVE':
-            result, log = self._move(args)
+            result, log = self._move(args, log=[])
             self._print_log(log)
-            return result
+            print(result)
+            return {'result': result, 'log': log}
         elif cmd == 'HOME':
-            result, log = self.GPR.HOME()
+            result, log = self.GPR.HOME(log=[])
             self._print_log(log)
-            return result
+            print(result)
+            return {'result': result, 'log': log}
         elif cmd == 'INP':
-            result, log = self.GPR.INP()
+            result, log = self.GPR.INP(log=[])
             self._print_log(log)
-            return result
+            print(result)
+            return {'result': result, 'log': log}
         elif cmd == 'ACT':
-            result, log = self._act(args)
+            result, log = self._act(args, log=[])
             self._print_log(log)
-            return result
+            print(result)
+            return {'result': result, 'log': log}
         elif cmd == 'ALARM':
-            result, log = self.GPR.ALARM()
+            result, log = self.GPR.ALARM(log=[])
             self._print_log(log)
-            return result
+            print(result)
+            return {'result': result, 'log': log}
         elif cmd == 'RESET':
-            result, log = self.GPR.RESET()
+            result, log = self.GPR.RESET(log=[])
             self._print_log(log)
-            return result
+            print(result)
+            return {'result': result, 'log': log}
         elif cmd == 'STATUS':
-            result, log = self.GPR.STATUS()
+            result, log = self.GPR.STATUS(log=[])
             self._print_log(log)
-            return result
+            print(result)
+            return {'result': result, 'log': log}
         elif cmd == 'EXIT':
-            self.GPR.OFF()
+            self.GPR.OFF(log=[])
             sy.exit(0)
         else:
             print(
