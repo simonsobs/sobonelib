@@ -32,6 +32,7 @@
 #define LIMIT_PACKETS_TO_SEND 1
 #define ERROR_PACKETS_TO_SEND 1
 #define TIMEOUT_PACKETS_TO_SEND 1
+#define PULSE_PACKETS_TO_SEND 1
 
 #define ON_OFFSET 0x0000
 #define OVERFLOW_OFFSET 0x0008
@@ -46,6 +47,7 @@
 
 #define ENCODER_TIMEOUT 10
 #define LIMIT_TIMEOUT 10
+#define PULSE_TIMEOUT 5
 
 #define ENCODER_TIMEOUT_FLAG 1
 
@@ -79,6 +81,10 @@ struct TimeoutInfo {
 	unsigned long int type;
 };
 
+struct PulseInfo {
+	unsigned long int header;
+};
+
 volatile unsigned long int * on;
 volatile unsigned long int * clock_overflow;
 volatile unsigned long int * encoder_ready;
@@ -92,11 +98,12 @@ volatile struct EncoderInfo encoder_to_send[ENCODER_PACKETS_TO_SEND];
 volatile struct LimitInfo limit_to_send[LIMIT_PACKETS_TO_SEND];
 volatile struct ErrorInfo error_to_send[ERROR_PACKETS_TO_SEND];
 volatile struct TimeoutInfo timeout_packet[TIMEOUT_PACKETS_TO_SEND];
+volatile struct PulseInfo pulse_packet[PUSLE_PACKETS_TO_SEND];
 
 unsigned long int offset;
 unsigned long int encoder_index, limit_index, error_index;
 
-clock_t current_time, encoder_time;
+clock_t current_time, encoder_time, pulse_time;
 
 int sockfd;
 struct sockaddr_in servaddr;
@@ -184,6 +191,7 @@ int main(int argc, char **argv) {
 	printf("   TOS = 0x%X\n", (tos_read >> 1) & 0xF);
 
 	timeout_packet->header = 0x1234;
+	pulse_packet->header = 0x8888;
 	encoder_index = 0;
 	limit_index = 0;
 	error_index = 0;
@@ -242,6 +250,12 @@ int main(int argc, char **argv) {
 			sendto(sockfd, (struct TimeoutInfo *) &timeout_packet, sizeof(*timeout_packet),
 			MSG_CONFIRM, (const struct sockaddr *) &servaddr, sizeof(servaddr));
 			encoder_time = current_time;
+		}
+
+		if (((double) (current_time - pulse_time))/CLOCKS_PER_SEC > PULSE_TIMEOUT) {
+			sendto(sockfd, (struct PulseInfo *) &pulse_packet, sizeof(*pulse_packet),
+			MSG_CONFIRM, (const struct sockaddr *) &servaddr, sizeof(servaddr));
+			pulse_time = current_time;
 		}
 	}
 
