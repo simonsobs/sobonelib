@@ -52,44 +52,6 @@ class GripperServer(object):
         self.limit_pos = [13.,10.,13.,10.,13.,10.]
         self.is_forced = False
 
-        # The Beaglebone code periodically queries the status of six pins measuring the
-        # encoder signal and sends that data to this process in the form of UDP packets.
-        # Each actuator has two encoder signals
-
-        # Similarly the Beaglebone code also periodically queries the status of six pins
-        # hooked up to the warm and cold limit switches on each actuator and sends that
-        # data to the agent as seperate UDP packets
-
-        # Names of the encoder chains (currently the code does not use these, but it's still a
-        # good reference to know which index corresponds to which chain)
-        # self.encoder_names = ['Actuator 1 A', 'Actuator 1 B', 'Actuator 2 A',
-        #                       'Actuator 2 B', 'Actuator 3 A', 'Actuator 3 B']
-
-        # Which bits on Beaglebone PRU1 register are used for the encoder (these values shouldn't change)
-        self.encoder_pru = [0, 1, 2, 3, 4, 5]
-
-        # Array which holds how many rising/falling edges have been detected from the encoder signal
-        self.encoder_edges = multiprocessing.Array(ctypes.c_int, (0, 0, 0, 0, 0, 0))
-
-        # Array which tells the code whether it should use incomming data to change the number of
-        # encoder edges. There are six values, one for each encoder chain
-        self.encoder_edges_record = multiprocessing.Array(ctypes.c_int, (0, 0, 0, 0, 0, 0))
-
-        # Array which tells the code what direction the actuator should be moving in. There are six
-        # values, one for each encoder chain
-        self.encoder_direction = multiprocessing.Array(ctypes.c_int, (1, 1, 1, 1, 1, 1))
-
-        # Names of the limit chains
-        self.limit_names = ['Actuator 1 Cold', 'Actuator 1 Warm', 'Actuator 2 Cold',
-                            'Actuator 2 Warm', 'Actuator 3 Cold', 'Actuator 3 Warm']
-        
-        # Which bits on Beaglebone PRU0 register are used for the limit switches (these values shouldn't
-        # change)
-        self.limit_pru = [8, 9, 10, 11, 12, 13]
-        
-        # Array which holds the current status of each limit switch
-        self.limit_state = [0, 0, 0, 0, 0, 0]
-
         # Variable to tell the code whether the cryostat is warm (False) or cold (True). Needs to be
         # given by the user
         self.is_cold = multiprocessing.Value(ctypes.c_bool, False)
@@ -98,9 +60,6 @@ class GripperServer(object):
         # this variable is False the actuators will only move while none of the active limit switches
         # are triggered (which limit switches are chosen depends on self.is_cold)
         self.force = multiprocessing.Value(ctypes.c_bool, False)
-
-        self.collector_process = multiprocessing.Process(target = self.collect_pru)
-        self.collector_process.start()
 
     def process_command(self):
         conn, addr = self.s.accept()
@@ -200,7 +159,6 @@ class GripperServer(object):
 
     def monitor_limit_state(self):
 
-        emgs = [self.JXC.EMG1, self.JXC.EMG2, self.JXC.EMG3]
         prev_state = self.pru_monitor.get_state()
         while True:
             time.sleep(0.2)
@@ -216,10 +174,10 @@ class GripperServer(object):
 
                 # Else, we may need to take EMG action
                 print(f"Limit switch activation for axis {act.axis} at time: {time.time()}")
-                if act.cold_grip.state:
+                if act.limits['cold_grip'].state:
                     print("Cold grip limit triggered, turning EMG Off")
                     self.CMD.CMD(f'EMG OFF {act.axis}')
-                elif act.warm_grip.state and (not self.is_cold.value):
+                elif act.limits['warm_grip'].state and (not self.is_cold.value):
                     print("Warm grip limit triggered while warm, turning EMG Off")
                     self.CMD.CMD(f'EMG OFF {act.axis}')
                 else:
@@ -228,18 +186,9 @@ class GripperServer(object):
 
             prev_state = state
 
-    def __exit__(self):
-        with self._run_collect_pru.get_lock():
-            self._run_collect_pru = False
 
-        while not self._stopped.value:
-            time.sleep(0.001)
-
-        self.collector_process.terminate()
-        self.collector_process.join()
-        self.s.close()
-
-server = GripperServer(8040, 8041)
-print('Starting Server')
-while True:
-    server.process_command()
+if __name__ == '__main__':
+    server = GripperServer(8040, 8041)
+    print('Starting Server')
+    while True:
+        server.process_command()

@@ -6,27 +6,30 @@ Each actuator has two encoder signals
 
 Similarly the Beaglebone code also periodically queries the status of six pins
 hooked up to the warm and cold limit switches on each actuator and sends that
-data to the agent as seperate UDP packets
+data to the agent as separate UDP packets
 
 Names of the encoder chains (currently the code does not use these, but it's still a
 good reference to know which index corresponds to which chain)
 self.encoder_names = ['Actuator 1 A', 'Actuator 1 B', 'Actuator 2 A',
                       'Actuator 2 B', 'Actuator 3 A', 'Actuator 3 B']
 
+Names of the limit chains
+self.limit_names = ['Actuator 1 Cold', 'Actuator 1 Warm', 'Actuator 2 Cold',
+                    'Actuator 2 Warm', 'Actuator 3 Cold', 'Actuator 3 Warm']
+
 """
 from dataclasses import dataclass, field, replace
 import numpy as np
 import socket
-import threading
 import struct
-import queue
+import threading
 import time
 from typing import Optional, Tuple, Dict
+import queue
 
 
 ENCODER_COUNTER_SIZE = 120
-NUM_ENCODERS = 6
-MM_PER_NOTCH = 160
+MM_PER_NOTCH = 1./160
 
 
 @dataclass
@@ -46,14 +49,16 @@ class EncoderPacket:
 
     @classmethod
     def from_data(cls, data):
+        """Unpack packet from UDP data"""
         unpack_str = 3*f"{ENCODER_COUNTER_SIZE}I"
         x = struct.unpack(unpack_str, data)
         clock = x[:ENCODER_COUNTER_SIZE]
         # adds in the overflow bits
-        clock += x[ENCODER_COUNTER_SIZE : 2*ENCODER_COUNTER_SIZE]<<32
+        clock += x[ENCODER_COUNTER_SIZE: 2*ENCODER_COUNTER_SIZE] << 32
 
-        state_ints = x[2*ENCODER_COUNTER_SIZE : 3*ENCODER_COUNTER_SIZE]
+        state_ints = x[2*ENCODER_COUNTER_SIZE: 3*ENCODER_COUNTER_SIZE]
         return cls(clock=clock, state=state_ints)
+
 
 @dataclass
 class LimitPacket:
@@ -63,9 +68,11 @@ class LimitPacket:
 
     @classmethod
     def from_data(cls, data):
+        """Unpack packet from UDP data"""
         x = struct.unpack("III", data)
-        clock = x[0] + (x[1]<<32)
+        clock = x[0] + (x[1] << 32)
         return cls(clock=clock, state=x[2])
+
 
 @dataclass
 class ErrorPacket:
@@ -74,8 +81,10 @@ class ErrorPacket:
 
     @classmethod
     def from_data(cls, data):
+        """Unpack packet from UDP data"""
         x = struct.unpack("I", data)
         return cls(error_code=x[0])
+
 
 @dataclass
 class TimeoutPacket:
@@ -84,25 +93,40 @@ class TimeoutPacket:
 
     @classmethod
     def from_data(cls, data):
+        """Unpack packet from UDP data"""
         x = struct.unpack("I", data)
         return cls(timeout_type=x[0])
 
+
 @dataclass
 class PulsePacket:
+    """Packet that is regularly sent to keep connection alive"""
     timestamp: float = field(default_factory=time.time)
 
     @classmethod
-    def from_data(cls, data):
+    def from_data(cls, _):
+        """Unpack packet from UDP data"""
         return cls()
+
 
 packet_headers = {
     0xBAD0: EncoderPacket,
     0xF00D: LimitPacket,
-    0x1234: ErrorPacket,
+    0xE12A: ErrorPacket,
     0x1234: TimeoutPacket,
-    0x1234: PulsePacket,
+    0x8888: PulsePacket,
 }
+
+
 def parse_packet(data):
+    """
+    Parses a PRU packet sent from the beaglebone's PRU process
+
+    Parameters
+    ---------------
+    data: bytes
+        UDP packet data
+    """
     header = struct.unpack("H", data[:2])
     if header not in packet_headers:
         raise RuntimeError(f"Bad header: {header}")
@@ -117,24 +141,30 @@ def parse_packet(data):
 
 @dataclass
 class LimitState:
-    pru_bit: int
+    pru_bit: Optional[int] = None
     state: bool = False
+
 
 @dataclass
 class ActuatorState:
     axis: int
     limit_pru_bits: Tuple[int, int]
 
-    limits : Dict[str, LimitState] = {
-        'cold_grip': LimitState(pru_bit=limit_pru_bits[0]),
-        'warm_grip': LimitState(pru_bit=limit_pru_bits[1]),
+    limits: Optional[Dict[str, LimitState]] = {
+        'cold_grip': LimitState(),
+        'warm_grip': LimitState(),
     }
     pos: float = 0
     calibrated: bool = False
 
+    def __post_init__(self):
+        self.limits['cold_grip'].pru_bit = self.limit_pru_bits[0]
+        self.limits['warm_grip'].pru_bit = self.limit_pru_bits[1]
+
+
 @dataclass
 class GripperState:
-    actuators : Tuple[ActuatorState, ActuatorState, ActuatorState] = (
+    actuators: Tuple[ActuatorState, ActuatorState, ActuatorState] = (
         ActuatorState(axis=1, limit_pru_bits=(8, 9)),
         ActuatorState(axis=2, limit_pru_bits=(10, 11)),
         ActuatorState(axis=3, limit_pru_bits=(12, 13)),
@@ -149,21 +179,23 @@ class GripperState:
 
     @property
     def expired(self):
+        """Returns True if the gripper state has not been updated in a while"""
         return time.time() - self.last_packet_received > self._expiration_time
-    
+
     def update(self, packet):
+        """Updates the gripper state based on an incoming PRU packet"""
         self.last_packet_received = packet.timestamp
 
         if isinstance(packet, EncoderPacket):
             # Update the position of each encoder
-            for act in [self.act1, self.act2, self.act3]:
-                i = act.idx
-                a_state = (packet.state >> 2*i) & 1
-                b_state = (packet.state >> (2*i + 1)) & 1 
+            for act in self.actuators:
+                idx = act.axis - 1
+                a_state = (packet.state >> 2*idx) & 1
+                b_state = (packet.state >> (2*idx + 1)) & 1
 
                 if self._last_enc_state is not None:
                     rising_edges = np.diff(
-                        a_state, prepend=(self._last_enc_state >> 2*i) & 1
+                        a_state, prepend=(self._last_enc_state >> 2*idx) & 1
                     ) == 1
                     dirs = (b_state[rising_edges] * 2 - 1)
                 else:
@@ -178,10 +210,9 @@ class GripperState:
             self.last_limit_received = packet.timestamp
 
             # Update the limit state of each actuator
-            for limit in [self.cold_grip_1, self.warm_grip_1,
-                           self.cold_grip_2, self.warm_grip_2,
-                           self.cold_grip_3, self.warm_grip_3]:
-                limit.state = bool((packet.state >> limit.pru_bit) & 1)
+            for act in self.actuators:
+                for limit in act.limits.values():
+                    limit.state = bool((packet.state >> limit.pru_bit) & 1)
 
         elif isinstance(packet, ErrorPacket):
             # Should we do anything else for errors?
@@ -189,30 +220,32 @@ class GripperState:
 
         elif isinstance(packet, TimeoutPacket):
             # Should we do anything else for timeouts?
-            print(f"Timeout packet received!! timeout type: {packet.timeout_type}")
+            print(
+                f"Timeout packet received!! timeout type: {packet.timeout_type}")
 
         else:
             raise RuntimeError(f"Unknown packet type: {packet}")
-        
-        def set_home(self):
-            """
-            """
-            for act in self._gripper_state.actuators:
-                act.pos = 0
-                act.calibrated = True
+
+    def set_home(self):
+        for act in self.actuators:
+            act.pos = 0
+            act.calibrated = True
+
 
 class PruMonitor:
     """
-    This class monitors incoming UDP packets from the PRU, and uses incoming data to keep
-    track of the Gripper state.
+    This class monitors incoming UDP packets from the PRU, and uses incoming
+    data to keep track of the Gripper state.
 
     Args
     ------
     port : int
         Port to listen for incoming UDP packets
     ip_address : str
-        IP Address to listen for incoming UDP packets. Defaults to using all available interfaces.
+        IP Address to listen for incoming UDP packets. Defaults to using all
+        available interfaces.
     """
+
     def __init__(self, port, ip_address=''):
         self.port = port
         self.ip_address = ip_address
@@ -235,24 +268,24 @@ class PruMonitor:
         while True:
             data, _ = self.socket.recvfrom(1024)
             self.packet_queue.put((parse_packet(data)))
-    
+
     def _update_state(self):
         while True:
             packet = self.packet_queue.get()
             with self._state_lock:
                 self._gripper_state.update(packet)
-    
-    def set_home():
+
+    def set_home(self):
         """
         Sets the current position as the home position
         """
         with self._state_lock:
             self._gripper_state.set_home()
-            
-    
+
     def get_state(self):
         """
         Gets the current gripper state
         """
         with self._state_lock:
-            return replace(self.gripper_state) # Return a copy of the state object
+            # Return a copy of the state object
+            return replace(self._gripper_state)
