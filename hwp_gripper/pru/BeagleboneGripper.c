@@ -98,7 +98,7 @@ volatile struct EncoderInfo encoder_to_send[ENCODER_PACKETS_TO_SEND];
 volatile struct LimitInfo limit_to_send[LIMIT_PACKETS_TO_SEND];
 volatile struct ErrorInfo error_to_send[ERROR_PACKETS_TO_SEND];
 volatile struct TimeoutInfo timeout_packet[TIMEOUT_PACKETS_TO_SEND];
-volatile struct PulseInfo pulse_packet[PUSLE_PACKETS_TO_SEND];
+volatile struct PulseInfo pulse_packet[PULSE_PACKETS_TO_SEND];
 
 unsigned long int offset;
 unsigned long int encoder_index, limit_index, error_index;
@@ -183,7 +183,7 @@ int main(int argc, char **argv) {
 	memset(&servaddr, 0, sizeof(servaddr));
 	servaddr.sin_family = AF_INET;
 	servaddr.sin_port = htons(PORT);
-	inet_pton(AF_INET, "192.168.7.2", &(servaddr.sin_addr.s_addr));
+	inet_pton(AF_INET, "192.168.0.221", &(servaddr.sin_addr.s_addr));
 	setsockopt(sockfd, IPPROTO_IP, IP_TOS, &tos_write, sizeof(tos_write));
 	getsockopt(sockfd, IPPROTO_IP, IP_TOS, &tos_read, &tos_read_len);
 	printf("IP UDP TOS byte set to 0x%X\n", tos_read);
