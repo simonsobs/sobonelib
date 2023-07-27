@@ -150,16 +150,16 @@ class ActuatorState:
     axis: int
     limit_pru_bits: Tuple[int, int]
 
-    limits: Optional[Dict[str, LimitState]] = {
-        'cold_grip': LimitState(),
-        'warm_grip': LimitState(),
-    }
+    limits: Optional[Dict[str, LimitState]] = None
+
     pos: float = 0
     calibrated: bool = False
 
     def __post_init__(self):
-        self.limits['cold_grip'].pru_bit = self.limit_pru_bits[0]
-        self.limits['warm_grip'].pru_bit = self.limit_pru_bits[1]
+        self.limits = {
+            'cold_grip': LimitState(pru_bit=self.limit_pru_bits[0]),
+            'warm_grip': LimitState(pru_bit=self.limit_pru_bits[1]),
+        }
 
 
 @dataclass

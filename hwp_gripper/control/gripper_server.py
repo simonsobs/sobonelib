@@ -42,15 +42,7 @@ class GripperServer(object):
         self.pru_monitor = PruMonitor(self.pru_port)
         self.pru_monitor.start()
 
-        self.collector = col.GripperCollector(self.pru_port)
-        self._run_collect_pru = multiprocessing.Value(ctypes.c_bool, False)
-        self._stopped = multiprocessing.Value(ctypes.c_bool, False)
-
-        self.last_encoder = 0
-        self.last_limit = 0
-        self.last_limit_time = 0
         self.limit_pos = [13.,10.,13.,10.,13.,10.]
-        self.is_forced = False
 
         # Variable to tell the code whether the cryostat is warm (False) or cold (True). Needs to be
         # given by the user
@@ -135,7 +127,7 @@ class GripperServer(object):
         log.append(f'Received request to change is_cold to {args[1]}')
         with self.is_cold.get_lock():
             self.is_cold.value = bool(args[1])
-            log.append('force successfully changed')
+            log.append('is_cold successfully changed')
 
         return {'result': True, 'log': log}
 
@@ -143,12 +135,9 @@ class GripperServer(object):
         log = []
         args = command.split(' ')
         log.append(f'Received request to change force to {args[1]}')
-        if bool(args[1]):
-            self.is_forced = False
-            log.append('force successfully changed')
-
         with self.force.get_lock():
             self.force.value = bool(args[1])
+            log.append('force successfully changed')
 
         return {'result': True, 'log': log}
     
@@ -190,5 +179,6 @@ class GripperServer(object):
 if __name__ == '__main__':
     server = GripperServer(8040, 8041)
     print('Starting Server')
+    server.CMD.CMD('EMG ON')
     while True:
         server.process_command()
