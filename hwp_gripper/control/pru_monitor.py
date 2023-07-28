@@ -50,8 +50,8 @@ class EncoderPacket:
     @classmethod
     def from_data(cls, data):
         """Unpack packet from UDP data"""
-        unpack_str = 3*f"{ENCODER_COUNTER_SIZE}I"
-        x = struct.unpack(unpack_str, data)
+        unpack_str = 3*ENCODER_COUNTER_SIZE*"L"
+        x = np.array(struct.unpack(unpack_str, data))
         clock = x[:ENCODER_COUNTER_SIZE]
         # adds in the overflow bits
         clock += x[ENCODER_COUNTER_SIZE: 2*ENCODER_COUNTER_SIZE] << 32
@@ -69,7 +69,7 @@ class LimitPacket:
     @classmethod
     def from_data(cls, data):
         """Unpack packet from UDP data"""
-        x = struct.unpack("III", data)
+        x = np.array(struct.unpack("LLL", data))
         clock = x[0] + (x[1] << 32)
         return cls(clock=clock, state=x[2])
 
@@ -82,7 +82,7 @@ class ErrorPacket:
     @classmethod
     def from_data(cls, data):
         """Unpack packet from UDP data"""
-        x = struct.unpack("I", data)
+        x = np.array(struct.unpack("L", data))
         return cls(error_code=x[0])
 
 
@@ -94,7 +94,7 @@ class TimeoutPacket:
     @classmethod
     def from_data(cls, data):
         """Unpack packet from UDP data"""
-        x = struct.unpack("I", data)
+        x = np.array(struct.unpack("L", data))
         return cls(timeout_type=x[0])
 
 
@@ -127,12 +127,12 @@ def parse_packet(data):
     data: bytes
         UDP packet data
     """
-    header = struct.unpack("H", data[:2])
+    header = struct.unpack("L", data[:4])[0]
     if header not in packet_headers:
         raise RuntimeError(f"Bad header: {header}")
-
+    
     packet_type = packet_headers[header]
-    return packet_type.from_data(data[2:])
+    return packet_type.from_data(data[4:])
 
 
 ########################################
@@ -222,7 +222,8 @@ class GripperState:
             # Should we do anything else for timeouts?
             print(
                 f"Timeout packet received!! timeout type: {packet.timeout_type}")
-
+        elif isinstance(packet, PulsePacket):
+            pass
         else:
             raise RuntimeError(f"Unknown packet type: {packet}")
 
@@ -258,7 +259,7 @@ class PruMonitor:
         self.packet_queue = queue.Queue()
 
         self.read_thread = threading.Thread(target=self._read_packets)
-        self.update_thread = threading.Thread(target=self._update_state)
+        self.update_thread = threading.Thread(target=self._update_state, args=(self._gripper_state,))
 
     def start(self):
         self.read_thread.start()
@@ -266,14 +267,14 @@ class PruMonitor:
 
     def _read_packets(self):
         while True:
-            data, _ = self.socket.recvfrom(1024)
+            data, _ = self.socket.recvfrom(2048)
             self.packet_queue.put((parse_packet(data)))
 
-    def _update_state(self):
+    def _update_state(self, gripper_state):
         while True:
             packet = self.packet_queue.get()
             with self._state_lock:
-                self._gripper_state.update(packet)
+                gripper_state.update(packet)
 
     def set_home(self):
         """

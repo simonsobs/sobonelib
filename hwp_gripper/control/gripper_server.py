@@ -18,8 +18,6 @@ import control as ct
 import gripper as gp
 import command_gripper as cg
 
-import gripper_collector as col
-
 
 class GripperServer(object):
     def __init__(self, pru_port, control_port):
@@ -39,6 +37,7 @@ class GripperServer(object):
         self.GPR = gp.Gripper(self.CTL)
         self.CMD = cg.Command(self.GPR)
 
+        print('Starting PRU Monitor')
         self.pru_monitor = PruMonitor(self.pru_port)
         self.pru_monitor.start()
 
@@ -52,6 +51,10 @@ class GripperServer(object):
         # this variable is False the actuators will only move while none of the active limit switches
         # are triggered (which limit switches are chosen depends on self.is_cold)
         self.force = multiprocessing.Value(ctypes.c_bool, False)
+
+        self.limit_process = multiprocessing.Process(target = self.monitor_limit_state)
+        print('Starting Limit Monitor')
+        self.limit_process.start()
 
     def process_command(self):
         conn, addr = self.s.accept()
@@ -107,7 +110,8 @@ class GripperServer(object):
         else:
             dist = float(args[3])
 
-        return_dict = self.CMD.CMD(command)
+        args[3] = str(dist)
+        return_dict = self.CMD.CMD(' '.join(args))
         [log.append(line) for line in return_dict['log']]
         return_dict['log'] = log
 
@@ -126,7 +130,7 @@ class GripperServer(object):
         args = command.split(' ')
         log.append(f'Received request to change is_cold to {args[1]}')
         with self.is_cold.get_lock():
-            self.is_cold.value = bool(args[1])
+            self.is_cold.value = bool(int(args[1]))
             log.append('is_cold successfully changed')
 
         return {'result': True, 'log': log}
@@ -136,49 +140,66 @@ class GripperServer(object):
         args = command.split(' ')
         log.append(f'Received request to change force to {args[1]}')
         with self.force.get_lock():
-            self.force.value = bool(args[1])
+            self.force.value = bool(int(args[1]))
             log.append('force successfully changed')
 
         return {'result': True, 'log': log}
     
     def get_state(self):
+        log = []
         state = self.pru_monitor.get_state()
-        return {'result': asdict(state)}
+        log.append('Query actuator state')
+        return {'result': asdict(state), 'log': log}
 
 
     def monitor_limit_state(self):
-
+        prev_force = self.force.value
+        prev_is_cold = self.is_cold.value
         prev_state = self.pru_monitor.get_state()
+
+        start = True
         while True:
             time.sleep(0.2)
             # Collect data packets
+            force = self.force.value
+            is_cold = self.is_cold.value
             state = self.pru_monitor.get_state()
             for i, act in enumerate(state.actuators):
                 prev_act = prev_state.actuators[i]
-
                 # States haven't changed, don't do anything
-                if (act.cold_grip.state == prev_act.cold_grip.state \
-                    and act.warm_grip.state == prev_act.warm_grip.state):
+                if start:
+                    pass
+                elif (act.limits['cold_grip'].state == prev_act.limits['cold_grip'].state \
+                    and act.limits['warm_grip'].state == prev_act.limits['warm_grip'].state \
+                    and is_cold == prev_is_cold and force == prev_force):
                     continue
 
                 # Else, we may need to take EMG action
                 print(f"Limit switch activation for axis {act.axis} at time: {time.time()}")
-                if act.limits['cold_grip'].state:
+                if act.limits['cold_grip'].state and (not force):
                     print("Cold grip limit triggered, turning EMG Off")
                     self.CMD.CMD(f'EMG OFF {act.axis}')
-                elif act.limits['warm_grip'].state and (not self.is_cold.value):
+                elif act.limits['warm_grip'].state and (not is_cold) and (not force):
                     print("Warm grip limit triggered while warm, turning EMG Off")
                     self.CMD.CMD(f'EMG OFF {act.axis}')
                 else:
                     print("Limits ok, turning EMG on")
                     self.CMD.CMD(f'EMG ON {act.axis}')
 
+            if start:
+                start = False
+            prev_force = force
+            prev_is_cold = is_cold
             prev_state = state
+
+        def __exit__(self):
+            self.limit_process.terminate()
+            self.limit_process.join()
+            self.s.close()
 
 
 if __name__ == '__main__':
     server = GripperServer(8040, 8041)
     print('Starting Server')
-    server.CMD.CMD('EMG ON')
     while True:
         server.process_command()
