@@ -74,8 +74,6 @@ class Command:
             return {'result': result, 'log': log}
         elif cmd == 'STATUS':
             result, log = self.GPR.STATUS(log=[])
-            self._print_log(log)
-            print(result)
             return {'result': result, 'log': log}
         elif cmd == 'EXIT':
             self.GPR.OFF(log=[])

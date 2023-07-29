@@ -155,6 +155,9 @@ class ActuatorState:
     pos: float = 0
     calibrated: bool = False
 
+    BRAKE: bool = True
+    EMG: bool = False
+
     def __post_init__(self):
         self.limits = {
             'cold_grip': LimitState(pru_bit=self.limit_pru_bits[0]),
@@ -173,6 +176,14 @@ class GripperState:
     last_packet_received: float = 0.0
     last_limit_received: float = 0.0
     last_encoder_received: float = 0.0
+
+    SETUP: bool = False
+    SVON: bool = False
+    BUSY: bool = False
+    SETON: bool = False
+    INP: bool = False
+    SVRE: bool = False
+    ALARM: bool = False
 
     _expiration_time: float = 10.0
     _last_enc_state: Optional[int] = None
@@ -247,19 +258,20 @@ class PruMonitor:
         available interfaces.
     """
 
-    def __init__(self, port, ip_address=''):
+    def __init__(self, port, gripper_queue, ip_address=''):
         self.port = port
         self.ip_address = ip_address
 
-        self._gripper_state = GripperState()
+        self._gripper_queue = gripper_queue
         self._state_lock = threading.Lock()
 
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.socket.bind((self.ip_address, self.port))
         self.packet_queue = queue.Queue()
 
-        self.read_thread = threading.Thread(target=self._read_packets)
-        self.update_thread = threading.Thread(target=self._update_state, args=(self._gripper_state,))
+        self.read_thread = threading.Thread(target=self._read_packets, daemon=True)
+        self.update_thread = threading.Thread(target=self._update_state, args=(self._gripper_queue,),
+                                              daemon=True)
 
     def start(self):
         self.read_thread.start()
@@ -270,18 +282,22 @@ class PruMonitor:
             data, _ = self.socket.recvfrom(2048)
             self.packet_queue.put((parse_packet(data)))
 
-    def _update_state(self, gripper_state):
+    def _update_state(self, gripper_queue):
         while True:
             packet = self.packet_queue.get()
             with self._state_lock:
-                gripper_state.update(packet)
+                _gripper_state = gripper_queue.get()
+                _gripper_state.update(packet)
+                gripper_queue.put(_gripper_state)
 
     def set_home(self):
         """
         Sets the current position as the home position
         """
         with self._state_lock:
-            self._gripper_state.set_home()
+            _gripper_state = self._gripper_queue.get()
+            _gripper_state.set_home()
+            self._gripper_queue.put(_gripper_state)
 
     def get_state(self):
         """
@@ -289,4 +305,7 @@ class PruMonitor:
         """
         with self._state_lock:
             # Return a copy of the state object
-            return replace(self._gripper_state)
+            _gripper_state = self._gripper_queue.get()
+            return_state = replace(_gripper_state)
+            self._gripper_queue.put(_gripper_state)
+            return return_state
