@@ -6,12 +6,12 @@ import multiprocessing
 import time
 import pickle as pkl
 import numpy as np
-from pru_monitor import PruMonitor, GripperState
 from dataclasses import asdict
 
 this_dir = os.path.dirname(__file__)
 sys.path.append(this_dir)
 
+from state_monitor import StateMonitor
 import BBB as bb
 import JXC831 as jx
 import control as ct
@@ -37,16 +37,8 @@ class GripperServer(object):
         self.GPR = gp.Gripper(self.CTL)
         self.CMD = cg.Command(self.GPR)
 
-        self._gripper_queue = multiprocessing.Queue()
-        self._gripper_queue.put(GripperState())
-
-        self.pru_monitor = PruMonitor(self.pru_port, self._gripper_queue)
-        print('Starting PRU Monitor')
-        self.pru_monitor.start()
-
-        self.jxc_process = multiprocessing.Process(target = self.jxc_monitor, daemon = True)
-        print('Starting JXC Monitor')
-        self.jxc_process.start()
+        self.state_monitor = StateMonitor(self.pru_port, jxc=self.JXC)
+        self.state_monitor.start()
 
         self.limit_pos = [13.,10.,13.,10.,13.,10.]
 
@@ -96,7 +88,7 @@ class GripperServer(object):
         log = []
 
         actuator_idx = int(args[2]) - 1
-        state = self.pru_monitor.get_state()
+        state = self.state_monitor.get_state()
         act_state = state.actuator[actuator_idx]
         cur_pos = act_state.pos
 
@@ -126,11 +118,6 @@ class GripperServer(object):
 
     def home(self):
         return_dict = self.CMD.CMD('HOME')
-
-        # Returns True if JXC SETUP pin toggles
-        if return_dict['result']:
-            self.pru_monitor.set_home()
-
         return return_dict
 
     def is_cold_func(self, command):
@@ -155,31 +142,14 @@ class GripperServer(object):
     
     def get_state(self):
         log = []
-        state = self.pru_monitor.get_state()
+        state = self.state_monitor.get_state()
         log.append('Query actuator state')
         return {'result': asdict(state), 'log': log}
-
-    def jxc_monitor(self):
-        controller_bits = ['SETUP', 'SVON', 'BUSY', 'SETON', 'INP', 'SVRE', 'ALARM']
-        actuator_bits = [word+num for word in ['BRAKE', 'EMG'] for num in ['1','2','3']]
-        while True:
-            time.sleep(1)
-            return_dict = self.CMD.CMD('STATUS')            
-            gripper_state = self._gripper_queue.get()
-            for line in return_dict['log']:
-                info = line.split(' ')
-                if info[0] in controller_bits:
-                    exec('gripper_state.%s = bool(int(%s))' % (info[0],info[-1]))
-                elif info[0] in actuator_bits:
-                    axis = int(info[0][-1])
-                    exec('gripper_state.actuators[%i].%s = bool(int(%s))' %
-                         (axis-1,info[0][:-1],info[-1]))
-            self._gripper_queue.put(gripper_state)
 
     def limit_monitor(self):
         prev_force = self.force.value
         prev_is_cold = self.is_cold.value
-        prev_state = self.pru_monitor.get_state()
+        prev_state = self.state_monitor.get_state()
 
         start = True
         while True:
@@ -187,7 +157,7 @@ class GripperServer(object):
             # Collect data packets
             force = self.force.value
             is_cold = self.is_cold.value
-            state = self.pru_monitor.get_state()
+            state = self.state_monitor.get_state()
             for i, act in enumerate(state.actuators):
                 prev_act = prev_state.actuators[i]
                 # States haven't changed, don't do anything
