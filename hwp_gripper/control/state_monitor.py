@@ -254,7 +254,7 @@ class GripperState:
             self.jxc.inp = packet.inp
             self.jxc.svre = packet.svre
             self.jxc.alarm = packet.alarm
-            for i, act in self.actuators:
+            for i, act in enumerate(self.actuators):
                 act.brake = packet.brake[i]
                 act.emg = packet.emg[i]
             
@@ -269,7 +269,7 @@ class GripperState:
             if self.jxc.out != 0:
                 self._left_home = True
             
-        if isinstance(packet, EncoderPacket):
+        elif isinstance(packet, EncoderPacket):
             # Update the position of each encoder
             for act in self.actuators:
                 idx = act.axis - 1
@@ -374,21 +374,25 @@ class StateMonitor:
             'alarm': self.jxc.ALARM,
             'brake': [self.jxc.BRAKE1, self.jxc.BRAKE2, self.jxc.BRAKE3],
             'emg': [self.jxc.EMG1, self.jxc.EMG2, self.jxc.EMG3],
-            'out': [getattr(self.jxc, f'OUT{i}') for i in range(1, 9)],
+            'out': [getattr(self.jxc, f'OUT{i}') for i in range(0, 5)],
         }
 
         while True:
             d = {}
             for k, v in jxc_mapping.items():
-                if k in ['brake', 'emg']:
-                    d[k] = (self.jxc.read(vv) for vv in v)
+                if k == 'brake':
+                    d[k] = [not self.jxc.read(vv) for vv in v]
+                elif k == 'emg':
+                    d[k] = [bool(self.jxc.read(vv)) for vv in v]
                 elif k == 'out':
-                    bin_arr = [self.jxc.read(vv) for vv in v]
+                    bin_arr = [not self.jxc.read(vv) for vv in v]
                     # Converts a list of 1s and 0s representing a bin number
                     # to an int
-                    d[k] = int(map(str, bin_arr), 2) 
+                    d[k] = int(''.join(map(str,map(int,bin_arr)))[::-1],2)
+                elif k in ['busy', 'seton', 'inp', 'svre']:
+                    d[k] = not self.jxc.read(v)
                 else:
-                    d[k] = self.jxc.read(v)
+                    d[k] = bool(self.jxc.read(v))
             
             self.packet_queue.put(JXCPacket(**d))
             time.sleep(self.jxc_sample_time)

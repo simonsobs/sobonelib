@@ -1,8 +1,7 @@
 import socket
 import os
 import sys
-import ctypes
-import multiprocessing
+import threading
 import time
 import pickle as pkl
 import numpy as np
@@ -44,14 +43,14 @@ class GripperServer(object):
 
         # Variable to tell the code whether the cryostat is warm (False) or cold (True). Needs to be
         # given by the user
-        self.is_cold = multiprocessing.Value(ctypes.c_bool, False)
+        self.is_cold = False
         
         # Variable to tell the code whether it should ignore any flags sent by the limit switches. If
         # this variable is False the actuators will only move while none of the active limit switches
         # are triggered (which limit switches are chosen depends on self.is_cold)
-        self.force = multiprocessing.Value(ctypes.c_bool, False)
+        self.force = False
 
-        self.limit_process = multiprocessing.Process(target = self.limit_monitor, daemon = True)
+        self.limit_process = threading.Thread(target = self.limit_monitor, daemon = True)
         print('Starting Limit Monitor')
         self.limit_process.start()
 
@@ -124,9 +123,8 @@ class GripperServer(object):
         log = []
         args = command.split(' ')
         log.append(f'Received request to change is_cold to {args[1]}')
-        with self.is_cold.get_lock():
-            self.is_cold.value = bool(int(args[1]))
-            log.append('is_cold successfully changed')
+        self.is_cold = bool(int(args[1]))
+        log.append('is_cold successfully changed')
 
         return {'result': True, 'log': log}
 
@@ -134,9 +132,8 @@ class GripperServer(object):
         log = []
         args = command.split(' ')
         log.append(f'Received request to change force to {args[1]}')
-        with self.force.get_lock():
-            self.force.value = bool(int(args[1]))
-            log.append('force successfully changed')
+        self.force = bool(int(args[1]))
+        log.append('force successfully changed')
 
         return {'result': True, 'log': log}
     
@@ -147,16 +144,14 @@ class GripperServer(object):
         return {'result': asdict(state), 'log': log}
 
     def limit_monitor(self):
-        prev_force = self.force.value
-        prev_is_cold = self.is_cold.value
+        prev_force = self.force
+        prev_is_cold = self.is_cold
         prev_state = self.state_monitor.get_state()
 
         start = True
         while True:
             time.sleep(0.2)
             # Collect data packets
-            force = self.force.value
-            is_cold = self.is_cold.value
             state = self.state_monitor.get_state()
             for i, act in enumerate(state.actuators):
                 prev_act = prev_state.actuators[i]
@@ -165,15 +160,15 @@ class GripperServer(object):
                     pass
                 elif (act.limits['cold_grip'].state == prev_act.limits['cold_grip'].state \
                     and act.limits['warm_grip'].state == prev_act.limits['warm_grip'].state \
-                    and is_cold == prev_is_cold and force == prev_force):
+                    and self.is_cold == prev_is_cold and self.force == prev_force):
                     continue
 
                 # Else, we may need to take EMG action
                 print(f"Limit switch activation for axis {act.axis} at time: {time.time()}")
-                if act.limits['cold_grip'].state and (not force):
+                if act.limits['cold_grip'].state and (not self.force):
                     print("Cold grip limit triggered, turning EMG Off")
                     self.CMD.CMD(f'EMG OFF {act.axis}')
-                elif act.limits['warm_grip'].state and (not is_cold) and (not force):
+                elif act.limits['warm_grip'].state and (not self.is_cold) and (not self.force):
                     print("Warm grip limit triggered while warm, turning EMG Off")
                     self.CMD.CMD(f'EMG OFF {act.axis}')
                 else:
@@ -182,8 +177,8 @@ class GripperServer(object):
 
             if start:
                 start = False
-            prev_force = force
-            prev_is_cold = is_cold
+            prev_force = self.force
+            prev_is_cold = self.is_cold
             prev_state = state
 
         def __exit__(self):
