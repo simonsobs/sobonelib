@@ -1,4 +1,4 @@
-all: run.sh Beaglebone_Encoder_DAQ Encoder1.bin IRIG1.bin
+all: run.sh Beaglebone_Encoder_DAQ Encoder1.bin IRIG1.bin clean
 
 run.sh:
 	@chmod +x pinconfig
@@ -47,3 +47,11 @@ clean:
 	@rm IRIG_Detection.out
 	@rm IRIG_Detection.obj
 	@rm IRIG.cmd
+
+reset:
+	@rm run.sh
+	@rm Beaglebone_Encoder_DAQ
+	@rm Encoder1.bin
+	@rm Encoder2.bin
+	@rm IRIG1.bin
+	@rm IRIG2.bin
