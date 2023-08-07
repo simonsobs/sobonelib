@@ -241,7 +241,7 @@ int main(void) {
                 // Assume an IRIG error until proven otherwise
                 irig_bit_type = IRIG_ERR;
                 // If a rising edge, simply store the clock value
-                if ((sample & 1 << 14) >> 14 == 1) {
+                if ((sample & 1 << 14) >> 14 == 0) {
                     // Store rising edge time (accounting for overflows)
                     rising_edge_clock = ECAP.ts + overflow_time;
                     // Store rising edge time (not accounting for overflows)
