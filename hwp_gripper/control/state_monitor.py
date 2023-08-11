@@ -224,7 +224,7 @@ class GripperState:
         ActuatorState(axis=2, limit_pru_bits=(10, 11)),
         ActuatorState(axis=3, limit_pru_bits=(12, 13)),
     )
-    jxc = JXCState()
+    jxc: JXCState = JXCState()
 
     last_packet_received: float = 0.0
     last_limit_received: float = 0.0
