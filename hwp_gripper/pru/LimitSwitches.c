@@ -67,15 +67,13 @@ int main(void)
     *IEP_TMR_COMPEN = 0;
 
     while(*on == 0) {
-        if ((~__R31 & pru_mask) != 0) {
-            limit_packets[packet].clock = *IEP_TMR_CNT;
-            limit_packets[packet].clock_overflow = *counter_overflow + (*IEP_TMR_GLB_STS & 1);
-            limit_packets[packet].state = ~__R31 & pru_mask;
+        limit_packets[packet].clock = *IEP_TMR_CNT;
+        limit_packets[packet].clock_overflow = *counter_overflow + (*IEP_TMR_GLB_STS & 1);
+        limit_packets[packet].state = ~__R31 & pru_mask;
 
-            *limit_ready = packet + 1;
-            packet = (packet ^ 1) & 1;
-            __delay_cycles(12000000);
-        }
+        *limit_ready = packet + 1;
+        packet = (packet ^ 1) & 1;
+        __delay_cycles(12000000);
     }
 
     // Interrupt ARM when finished

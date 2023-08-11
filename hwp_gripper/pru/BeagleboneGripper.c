@@ -231,7 +231,6 @@ int main(int argc, char **argv) {
 		}
 
 		if (limit_index == LIMIT_PACKETS_TO_SEND) {
-			printf("%lu: sending limit packets\n", current_time);
 			sendto(sockfd, (struct LimitInfo *) limit_to_send, sizeof(limit_to_send),
 			       MSG_CONFIRM, (const struct sockaddr *) &servaddr, sizeof(servaddr));
 			limit_index = 0;
