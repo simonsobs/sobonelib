@@ -212,7 +212,6 @@ int main(int argc, char **argv) {
 		if (*limit_ready != 0) {
 			offset = *limit_ready - 1;
 			limit_to_send[limit_index] = limit_packets[offset];
-			printf("%X\n", limit_packets[offset].state);
 			++limit_index;
 			*limit_ready = 0;
 		}
