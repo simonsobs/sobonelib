@@ -88,7 +88,7 @@ class GripperServer(object):
 
         actuator_idx = int(args[2]) - 1
         state = self.state_monitor.get_state()
-        act_state = state.actuator[actuator_idx]
+        act_state = state.actuators[actuator_idx]
         cur_pos = act_state.pos
 
         warm_limit_pos = self.limit_pos[2 * int(args[2]) - 1]
