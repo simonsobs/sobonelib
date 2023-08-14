@@ -182,6 +182,14 @@ class Control:
             log.append("Control.HOME() aborted due to emergency stop being on")
             return False, log
 
+        # Turn off outputs
+        for output in [self._JXC.OUT0, self._JXC.OUT1, self._JXC.OUT2, self._JXC.OUT3, self._JXC.OUT4]:
+            self._JXC.set_off(output)
+
+        self._JXC.set_on(self._JXC.DRIVE)
+        self._sleep()
+        self._JXC.set_off(self._JXC.DRIVE)
+
         # Home the actuators
         self._JXC.set_on(self._JXC.SETUP)
         self._sleep()

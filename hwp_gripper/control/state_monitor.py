@@ -201,7 +201,7 @@ class JXCState:
 
         # Bit string that we can use to easily check current state
         status_bits = [self.busy, self.inp, self.svre, self.seton]
-        bit_rep = "".join([str(s) for s in status_bits])
+        bit_rep = "".join([str(int(s)) for s in status_bits])
 
         if self.out == 0:
             if bit_rep == "0000":
@@ -254,12 +254,14 @@ class GripperState:
             self.jxc.inp = packet.inp
             self.jxc.svre = packet.svre
             self.jxc.alarm = packet.alarm
+            self.jxc.out = packet.out
             for i, act in enumerate(self.actuators):
                 act.brake = packet.brake[i]
                 act.emg = packet.emg[i]
             
             if self._left_home:
                 if self.jxc.status == 'home':
+                    time.sleep(1)
                     for act in self.actuators:
                         act.pos = 0
                     self.calibrated = True
