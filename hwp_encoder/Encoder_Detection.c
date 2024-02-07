@@ -47,6 +47,7 @@ struct ECAP {
 struct EncoderInfo {
     unsigned long int header;
     unsigned long int quad;
+    unsigned long int packet_count;
     unsigned long int clock[ENCODER_COUNTER_SIZE];
     unsigned long int clock_overflow[ENCODER_COUNTER_SIZE];
     unsigned long int count[ENCODER_COUNTER_SIZE];

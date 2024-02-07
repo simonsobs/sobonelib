@@ -70,6 +70,8 @@ struct IrigInfo {
     // Number of overflows that have occurred
     // when the first rising edge is seen
     unsigned long int clock_overflow;
+    // Count over packet to send out
+    unsigned long int pakcet_count;
     // Info pointer
     unsigned long int info[10];
     // Synchronization pulse pointer

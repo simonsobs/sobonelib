@@ -83,6 +83,7 @@ volatile int32_t* init_prumem()
 struct EncoderInfo {
     unsigned long int header;
     unsigned long int quad;
+    unsigned long int packet_count;
     unsigned long int clock[ENCODER_COUNTER_SIZE];
     unsigned long int clock_overflow[ENCODER_COUNTER_SIZE];
     unsigned long int count[ENCODER_COUNTER_SIZE];
@@ -93,6 +94,7 @@ struct IrigInfo{
     unsigned long int header;
     unsigned long int clock;
     unsigned long int clock_overflow;
+    unsigned long int packet_count;
     unsigned long int info[10];
     unsigned long int synch[10];
     unsigned long int synch_overflow[10];
@@ -138,6 +140,8 @@ volatile struct TimeoutInfo timeout_packet[TIMEOUT_PACKETS_TO_SEND];
 unsigned long int offset;
 // For indexing over Encoder, IRIG, and Error packets to send out
 unsigned long int encd_ind, irig_ind, err_ind;
+// For counting over Encoder and IRIG packets to send out
+unsigned long int encd_pkt_cnt, irig_pkt_cnt;
 // Monitor the time since the packet was sent
 clock_t curr_time, encd_time, irig_time;
 // Creates socket to write UDP packets with
@@ -249,6 +253,8 @@ int main(int argc, char **argv) {
     // Start stashing data into data objects to send over UDP
     encd_ind = 0;
     irig_ind = 0;
+    encd_pkt_cnt = 0;
+    irig_pkt_cnt = 0;
     curr_time = clock();
     // Continuously loops, looking for data, while PRUs are executing
     printf("Initializing DAQ\n");
@@ -280,12 +286,14 @@ int main(int argc, char **argv) {
         }
         // Send encoder data if the buffer is full
         if(encd_ind == ENCODER_PACKETS_TO_SEND) {
+            encd_pkt_cnt += 1;
             sendto(sockfd, (struct EncoderInfo *) encoder_to_send, sizeof(encoder_to_send), 
                    MSG_CONFIRM, (const struct sockaddr *) &servaddr, sizeof(servaddr));
             encd_ind = 0;
         }
 	// Send IRIG data if the buffer is full
         if(irig_ind == IRIG_PACKETS_TO_SEND) {
+            irig_pkt_cnt += 1;
             sendto(sockfd, (struct IRIGInfo *) irig_to_send, sizeof(irig_to_send),
                    MSG_CONFIRM, (const struct sockaddr *) &servaddr, sizeof(servaddr));
             irig_ind = 0;
