@@ -287,6 +287,7 @@ int main(int argc, char **argv) {
         // Send encoder data if the buffer is full
         if(encd_ind == ENCODER_PACKETS_TO_SEND) {
             encd_pkt_cnt += 1;
+            encoder_to_send[encd_ind].packet_count = encd_pkt_cnt;
             sendto(sockfd, (struct EncoderInfo *) encoder_to_send, sizeof(encoder_to_send), 
                    MSG_CONFIRM, (const struct sockaddr *) &servaddr, sizeof(servaddr));
             encd_ind = 0;
@@ -294,6 +295,7 @@ int main(int argc, char **argv) {
 	// Send IRIG data if the buffer is full
         if(irig_ind == IRIG_PACKETS_TO_SEND) {
             irig_pkt_cnt += 1;
+            irig_to_send[irig_ind].packet_count = irig_pkt_cnt;
             sendto(sockfd, (struct IRIGInfo *) irig_to_send, sizeof(irig_to_send),
                    MSG_CONFIRM, (const struct sockaddr *) &servaddr, sizeof(servaddr));
             irig_ind = 0;
