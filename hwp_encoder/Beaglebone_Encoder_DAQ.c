@@ -264,38 +264,18 @@ int main(int argc, char **argv) {
         // Gather encoder data
         if(*encoder_ready != 0) {
             offset = *encoder_ready - 1;
-            encoder_to_send[encd_ind] = encoder_packets[offset];
-            encd_ind += 1;
-            *encoder_ready = 0;
-            // Update the last time the encoder data was recorded
-            encd_time = curr_time;
-        }
-        if(*irig_ready != 0) {
-            offset = *irig_ready - 1;
-            irig_to_send[irig_ind] = irig_packets[offset];
-            irig_ind += 1;
-            *irig_ready = 0;
-            // Update the last time the IRIG data was recorded
-            irig_time = curr_time;
-        }
-        if(*error_ready != 0) {
-            offset = *error_ready - 1;
-            error_to_send[err_ind] = error_packets[offset];
-            err_ind += 1;
-            *error_ready = 0;
-        }
-        // Send encoder data if the buffer is full
-        if(encd_ind == ENCODER_PACKETS_TO_SEND) {
-            encd_pkt_cnt += 1;
-            encoder_to_send[encd_ind].packet_count = encd_pkt_cnt;
+	    for (int i=0; i < ENCODER_PACKETS_TO_SEND; i++){
+	    	encoder_to_send[i].packet_count = encd_pkt_cnt++;
+	    }
             sendto(sockfd, (struct EncoderInfo *) encoder_to_send, sizeof(encoder_to_send), 
                    MSG_CONFIRM, (const struct sockaddr *) &servaddr, sizeof(servaddr));
             encd_ind = 0;
         }
 	// Send IRIG data if the buffer is full
         if(irig_ind == IRIG_PACKETS_TO_SEND) {
-            irig_pkt_cnt += 1;
-            irig_to_send[irig_ind].packet_count = irig_pkt_cnt;
+	    for (int i=0; i < IRIG_PACKETS_TO_SEND; i++){
+	    	irig_to_send[i].packet_count = irig_pkt_cnt++;
+	    }
             sendto(sockfd, (struct IRIGInfo *) irig_to_send, sizeof(irig_to_send),
                    MSG_CONFIRM, (const struct sockaddr *) &servaddr, sizeof(servaddr));
             irig_ind = 0;
