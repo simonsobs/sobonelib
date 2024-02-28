@@ -183,7 +183,7 @@ class Gripper:
                     continue
                 if div >= 1.0:
                     steps_to_do.append(k)
-                    d -= move_step
+                    d = np.round(d-move_step, decimals=1)
                     break
                 else:
                     continue
