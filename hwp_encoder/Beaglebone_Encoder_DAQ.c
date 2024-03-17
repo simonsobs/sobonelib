@@ -25,7 +25,7 @@
 #include <netinet/in.h>
 
 // Port used for the UDP connection
-#define PORT 8080
+#define PORT 9123
 
 // Below variables are defined in pruss_intc_mapping and prussdrv,
 // they are mapping interrupts from PRUs to ARM processor
@@ -244,7 +244,7 @@ int main(int argc, char **argv) {
     memset(&servaddr, 0, sizeof(servaddr));
     servaddr.sin_family = AF_INET;
     servaddr.sin_port = htons(PORT);
-    inet_pton(AF_INET, "", &(servaddr.sin_addr.s_addr));
+    inet_pton(AF_INET, "192.168.7.1", &(servaddr.sin_addr.s_addr));
     setsockopt(sockfd, IPPROTO_IP, IP_TOS, &tos_write, sizeof(tos_write));
     getsockopt(sockfd, IPPROTO_IP, IP_TOS, &tos_read, &tos_read_len);
     printf("IP UDP TOS byte set to 0x%X\n", tos_read);
@@ -266,6 +266,7 @@ int main(int argc, char **argv) {
         curr_time = clock();
         // Gather encoder data
         if(*encoder_ready != 0) {
+            printf("Encoder ready: %d\n", *encoder_ready);
             offset = *encoder_ready - 1;
             encoder_to_send[encd_ind] = encoder_packets[offset];
             encd_ind += 1;
@@ -289,8 +290,9 @@ int main(int argc, char **argv) {
         }
         // Send encoder data if the buffer is full
         if(encd_ind == ENCODER_PACKETS_TO_SEND) {
-            encd_pkt_cnt += 1;
-            encoder_to_send[encd_ind].packet_count = encd_pkt_cnt;
+            for (int i = 0; i < ENCODER_PACKETS_TO_SEND; i++){
+                encoder_to_send[i].packet_count = encd_pkt_cnt++;
+            }
             sendto(sockfd, (struct EncoderInfo *) encoder_to_send, sizeof(encoder_to_send), 
                    MSG_CONFIRM, (const struct sockaddr *) &servaddr, sizeof(servaddr));
             encd_ind = 0;
