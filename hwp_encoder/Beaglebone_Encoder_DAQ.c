@@ -263,6 +263,7 @@ int main(int argc, char **argv) {
         curr_time = clock();
         // Gather encoder data
         if(*encoder_ready != 0) {
+            printf("Encoder ready: %d\n", *encoder_ready);
             offset = *encoder_ready - 1;
             encoder_to_send[encd_ind] = encoder_packets[offset];
             encd_ind += 1;
@@ -286,8 +287,9 @@ int main(int argc, char **argv) {
         }
         // Send encoder data if the buffer is full
         if(encd_ind == ENCODER_PACKETS_TO_SEND) {
-            encd_pkt_cnt += 1;
-            encoder_to_send[encd_ind].packet_count = encd_pkt_cnt;
+            for (int i = 0; i < ENCODER_PACKETS_TO_SEND; i++){
+                encoder_to_send[i].packet_count = encd_pkt_cnt++;
+            }
             sendto(sockfd, (struct EncoderInfo *) encoder_to_send, sizeof(encoder_to_send), 
                    MSG_CONFIRM, (const struct sockaddr *) &servaddr, sizeof(servaddr));
             encd_ind = 0;
