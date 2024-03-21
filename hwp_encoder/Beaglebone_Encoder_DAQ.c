@@ -82,8 +82,11 @@ volatile int32_t* init_prumem()
 // the number of times the counter has overflowed
 struct EncoderInfo {
     unsigned long int header;
+    unsigned long int version;
+    unsigned long int num_samples;
     unsigned long int quad;
     unsigned long int packet_count;
+    unsigned long int buffer_reset_counter;
     unsigned long int clock[ENCODER_COUNTER_SIZE];
     unsigned long int clock_overflow[ENCODER_COUNTER_SIZE];
     unsigned long int count[ENCODER_COUNTER_SIZE];
@@ -263,7 +266,6 @@ int main(int argc, char **argv) {
         curr_time = clock();
         // Gather encoder data
         if(*encoder_ready != 0) {
-            printf("Encoder ready: %d\n", *encoder_ready);
             offset = *encoder_ready - 1;
             encoder_to_send[encd_ind] = encoder_packets[offset];
             encd_ind += 1;

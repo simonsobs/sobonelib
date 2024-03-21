@@ -14,7 +14,8 @@
 
 // Counter packet format data
 // Counter header
-#define ENCODER_HEADER 0x1EAF
+#define ENCODER_HEADER 0x2EAF
+#define ENCODER_PACKET_VERSION 1
 // Size of edges to sample before sending packet
 #define ENCODER_COUNTER_SIZE 120
 // ~75% of the storable max counter value
@@ -46,8 +47,11 @@ struct ECAP {
 // the number of times the counter has overflowed
 struct EncoderInfo {
     unsigned long int header;
+    unsigned long int version;
+    unsigned long int num_samples;
     unsigned long int quad;
     unsigned long int packet_count;
+    unsigned long int buffer_reset_counter;
     unsigned long int clock[ENCODER_COUNTER_SIZE];
     unsigned long int clock_overflow[ENCODER_COUNTER_SIZE];
     unsigned long int count[ENCODER_COUNTER_SIZE];
@@ -112,8 +116,14 @@ int main(void) {
     // Maintain two packets simultaneously, alternating between them
     // Write headers for packets
     encoder_packets[0].header = ENCODER_HEADER;
+    encoder_packets[0].version = ENCODER_PACKET_VERSION;
+    encoder_packets[0].num_samples = ENCODER_COUNTER_SIZE;
     encoder_packets[1].header = ENCODER_HEADER;
+    encoder_packets[1].version = ENCODER_PACKET_VERSION;
+    encoder_packets[1].num_samples = ENCODER_COUNTER_SIZE;
 
+
+    unsigned long int buffer_reset_counter = 0;
     // IRIG controls on variable
     // Once the IRIG code has sampled for a given time, it will set *on to 1
     while(*on == 0){
@@ -121,38 +131,39 @@ int main(void) {
         i = 0;
         while(i < 2){
             // Loop until packet is filled
-	    quad_needed = 1;
+            quad_needed = 1;
             x = 0;
+            encoder_packets[i].buffer_reset_counter = buffer_reset_counter++;
             while(x < ENCODER_COUNTER_SIZE){
                 // Record new counter value if changed
-		if ((__R31 & (1 << 10)) ^ ECAP.p_sample) {
+                if ((__R31 & (1 << 10)) ^ ECAP.p_sample) {
                     // Stores new time stamp
                     ECAP.ts = *IEP_TMR_CNT;
-		    // Stores overflow counter
-		    ECAP.overflow = *counter_overflow + ((*IEP_TMR_GLB_STS & 1));
-		    // Store timing sample
-		    edge_sample = (__R31 & (1 << 10));
-		    // Stores current sample as previous sample
+                    // Stores overflow counter
+                    ECAP.overflow = *counter_overflow + ((*IEP_TMR_GLB_STS & 1));
+                    // Store timing sample
+                    edge_sample = (__R31 & (1 << 10));
+                    // Stores current sample as previous sample
                     ECAP.p_sample = edge_sample;
                     // Increments number of edges that have been detected
                     input_capture_count += 1;
 
-		    // Store the quadrature value
-		    if(quad_needed == 1) {
-			// Store quad sample
-	 	        encoder_packets[i].quad = ((__R31 & (1 << 8)) >> 8) & 0x1;
-			quad_needed = 0;
-		    }
+                    // Store the quadrature value
+                    if(quad_needed == 1) {
+                    // Store quad sample
+                        encoder_packets[i].quad = ((__R31 & (1 << 8)) >> 8) & 0x1;
+                        quad_needed = 0;
+                    }
                     // Store time stamp
                     encoder_packets[i].clock[x] = ECAP.ts;
                     // Store overflows
                     encoder_packets[i].clock_overflow[x] = ECAP.overflow;
                     // Store number of edges detected
                     encoder_packets[i].count[x] = input_capture_count;
-		    // Reset the edge counter if exceeding its max allowed value
-		    if(input_capture_count == MAX_COUNTER_VALUE) {
-		        input_capture_count = 0;
-		    }
+                    // Reset the edge counter if exceeding its max allowed value
+                    if(input_capture_count == MAX_COUNTER_VALUE) {
+                        input_capture_count = 0;
+                    }
                     x += 1;
                 }
             }
