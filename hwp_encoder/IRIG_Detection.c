@@ -65,11 +65,14 @@ struct ECAP {
 struct IrigInfo {
     // IRIG header
     unsigned long int header;
+    unsigned long int version;
     // Rising edge time
     unsigned long int clock;
     // Number of overflows that have occurred
     // when the first rising edge is seen
     unsigned long int clock_overflow;
+    // Count over packet to send out
+    unsigned long int pakcet_count;
     // Info pointer
     unsigned long int info[10];
     // Synchronization pulse pointer
@@ -209,8 +212,10 @@ int main(void) {
 
     // Initialize two IRIG packets
     // Set IRIG headers for both IRIG packets
-    irig_packets[0].header = 0xCAFE;
-    irig_packets[1].header = 0xCAFE;
+    irig_packets[0].header = 0xCAFF;
+    irig_packets[0].header = 0xCAFF;
+    irig_packets[1].version = 1;
+    irig_packets[1].version = 1;
 
     // Sample for DAQ_HOURS number of hours
     x = 0;
@@ -227,13 +232,13 @@ int main(void) {
                 // Check for the counter overflow register
                 // and reset it by writing a 1
                 if (*IEP_TMR_GLB_STS & 1) {
-		    (*clock_overflow)++;
+                    (*clock_overflow)++;
                     *IEP_TMR_GLB_STS = 1;
-		}
-		short_edge_overflow = *clock_overflow;
+                }
+                short_edge_overflow = *clock_overflow;
 
                 // Store this sample as the new previous sample
-		sample = (__R31 & (1 << 14));
+                sample = (__R31 & (1 << 14));
                 ECAP.p_sample = sample;
 
                 // Total overflow time
@@ -252,7 +257,7 @@ int main(void) {
                 // If a falling edge, process IRIG PWM input
                 else {
                     // Store the falling edge time (accounting for overflows)
-		    falling_edge_clock = ECAP.ts + overflow_time;
+                    falling_edge_clock = ECAP.ts + overflow_time;
                     // Store the time between rising and falling edges
                     delta_clock = falling_edge_clock - rising_edge_clock;
 
@@ -264,14 +269,14 @@ int main(void) {
                              (delta_clock < IRIG_TIMER_1)) {
                         irig_bit_type = IRIG_1;
                     }
-                    else if ((delta_clock > IRIG_TIMER_1) && 
+                    else if ((delta_clock > IRIG_TIMER_1) &&
                              (delta_clock <= IRIG_TIMER_PI)) {
                         irig_bit_type = IRIG_PI;
                     }
                     else {
                         irig_bit_type = IRIG_ERR;
-			// Unexpected IRIG bit? Wait until syncing again
-			irig_parser_is_synched = 0;
+                        // Unexpected IRIG bit? Wait until syncing again
+                        irig_parser_is_synched = 0;
                     }
 
                     // Process IRIG synchronization and info pulses
@@ -324,7 +329,7 @@ int main(void) {
                             // Reset the synchronization
                             irig_parser_is_synched = 1;
                             irig_packets[i].clock = short_rising_edge_clock;
-			    irig_packets[i].clock_overflow = short_rising_edge_overflow;
+                            irig_packets[i].clock_overflow = short_rising_edge_overflow;
                         }
                     }
                     prev_bit_type = irig_bit_type;
