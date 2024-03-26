@@ -95,6 +95,7 @@ struct EncoderInfo {
 // IRIG packet
 struct IrigInfo{
     unsigned long int header;
+    unsigned long int version;
     unsigned long int clock;
     unsigned long int clock_overflow;
     unsigned long int packet_count;
