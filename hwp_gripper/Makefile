@@ -1,15 +1,17 @@
-all: control/run.sh pru/run.sh pru/BeagleboneGripper pru/Encoder1.bin pru/Limit1.bin clean
+all: control/run.sh pru/run.sh pru/BeagleboneGripper pru/Encoder1.bin pru/Limit1.bin service clean
 
 control/run.sh:
 	@echo '#!/bin/bash' > control/run.sh
 	@echo 'sudo python3 gripper_server.py' >> control/run.sh
 	@chmod +x control/run.sh
+	@sudo chmod +s control/run.sh
 
 pru/run.sh:
 	@chmod +x pru/pinconfig
 	@echo '#!/bin/bash' > pru/run.sh
 	@echo 'sudo ./BeagleboneGripper Encoder1.bin Encoder2.bin Limit1.bin Limit2.bin' >> pru/run.sh
 	@chmod +x pru/run.sh
+	@sudo chmod +s pru/run.sh
 
 pru/BeagleboneGripper: pru/BeagleboneGripper.c
 	@gcc -o pru/BeagleboneGripper pru/BeagleboneGripper.c -lprussdrv
@@ -46,6 +48,36 @@ pru/Limit.cmd:
 	@echo '  PAGE 1:' >> pru/Limit.cmd
 	@echo '    data: o = 0x0, l = 0x1000, files={pru/Limit2.bin}' >> pru/Limit.cmd
 	@echo '}' >> pru/Limit.cmd
+
+service: hwp-gripper-pru.service hwp-gripper-control.service
+	@sudo mv hwp-gripper-pru.service /etc/systemd/system/hwp-gripper-pru.service
+	@sudo mv hwp-gripper-control.service /etc/systemd/system/hwp-gripper-control.service
+
+hwp-gripper-pru.service:
+	@echo '[Unit]' > hwp-gripper-pru.service
+	@echo 'Description=hwp gripper pru process' >> hwp-gripper-pru.service
+	@echo '' >> hwp-gripper-pru.service
+	@echo '[Service]' >> hwp-gripper-pru.service
+	@echo "ExecStart=${PWD}/pru/run.sh" >> hwp-gripper-pru.service
+	@echo "User=${USER}" >> hwp-gripper-pru.service
+	@echo 'Restart=always' >> hwp-gripper-pru.service
+	@echo 'RestartSec=10s' >> hwp-gripper-pru.service
+	@echo '' >> hwp-gripper-pru.service
+	@echo '[Install]' >> hwp-gripper-pru.service
+	@echo 'WantedBy=multi-user.target' >> hwp-gripper-pru.service
+
+hwp-gripper-control.service:
+	@echo '[Unit]' > hwp-gripper-control.service
+	@echo 'Description=hwp gripper control process' >> hwp-gripper-control.service
+	@echo '' >> hwp-gripper-control.service
+	@echo '[Service]' >> hwp-gripper-control.service
+	@echo "ExecStart=${PWD}/control/run.sh" >> hwp-gripper-control.service
+	@echo "User=${USER}" >> hwp-gripper-control.service
+	@echo 'Restart=always' >> hwp-gripper-control.service
+	@echo 'RestartSec=10s' >> hwp-gripper-control.service
+	@echo '' >> hwp-gripper-control.service
+	@echo '[Install]' >> hwp-gripper-control.service
+	@echo 'WantedBy=multi-user.target' >> hwp-gripper-control.service
 
 clean:
 	@rm pru/GripperEncoder.out
