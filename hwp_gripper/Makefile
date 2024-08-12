@@ -2,14 +2,14 @@ all: control/run.sh pru/run.sh pru/BeagleboneGripper pru/Encoder1.bin pru/Limit1
 
 control/run.sh:
 	@echo '#!/bin/bash' > control/run.sh
-	@echo 'sudo python3 gripper_server.py' >> control/run.sh
+	@echo '/usr/bin/python3 gripper_server.py' >> control/run.sh
 	@chmod +x control/run.sh
 	@sudo chmod +s control/run.sh
 
 pru/run.sh:
 	@chmod +x pru/pinconfig
 	@echo '#!/bin/bash' > pru/run.sh
-	@echo 'sudo ./BeagleboneGripper Encoder1.bin Encoder2.bin Limit1.bin Limit2.bin' >> pru/run.sh
+	@echo './BeagleboneGripper Encoder1.bin Encoder2.bin Limit1.bin Limit2.bin' >> pru/run.sh
 	@chmod +x pru/run.sh
 	@sudo chmod +s pru/run.sh
 
@@ -52,6 +52,10 @@ pru/Limit.cmd:
 service: hwp-gripper-pru.service hwp-gripper-control.service
 	@sudo mv hwp-gripper-pru.service /etc/systemd/system/hwp-gripper-pru.service
 	@sudo mv hwp-gripper-control.service /etc/systemd/system/hwp-gripper-control.service
+	@sudo systemctl enable hwp-gripper-pru.service
+	@sudo systemctl enable hwp-gripper-control.service
+	@sudo systemctl start hwp-gripper-pru.service
+	@sudo systemctl start hwp-gripper-control.service
 
 hwp-gripper-pru.service:
 	@echo '[Unit]' > hwp-gripper-pru.service
@@ -60,6 +64,7 @@ hwp-gripper-pru.service:
 	@echo '[Service]' >> hwp-gripper-pru.service
 	@echo "ExecStart=${PWD}/pru/run.sh" >> hwp-gripper-pru.service
 	@echo "User=${USER}" >> hwp-gripper-pru.service
+	@echo "WorkingDirectory=${PWD}/pru/" >> hwp-gripper-pru.service
 	@echo 'Restart=always' >> hwp-gripper-pru.service
 	@echo 'RestartSec=10s' >> hwp-gripper-pru.service
 	@echo '' >> hwp-gripper-pru.service
@@ -73,6 +78,7 @@ hwp-gripper-control.service:
 	@echo '[Service]' >> hwp-gripper-control.service
 	@echo "ExecStart=${PWD}/control/run.sh" >> hwp-gripper-control.service
 	@echo "User=${USER}" >> hwp-gripper-control.service
+	@echo "WorkingDirectory=${PWD}/control/" >> hwp-gripper-control.service
 	@echo 'Restart=always' >> hwp-gripper-control.service
 	@echo 'RestartSec=10s' >> hwp-gripper-control.service
 	@echo '' >> hwp-gripper-control.service
@@ -93,3 +99,7 @@ reset:
 	@rm pru/Encoder2.bin
 	@rm pru/Limit1.bin
 	@rm pru/Limit2.bin
+	@sudo systemctl disable hwp-gripper-pru.service
+	@sudo systemctl disable hwp-gripper-control.service
+	@sudo rm /etc/systemd/system/hwp-gripper-pru.service
+	@sudo rm /etc/systemd/system/hwp-gripper-control.service
