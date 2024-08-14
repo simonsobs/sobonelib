@@ -5,7 +5,6 @@ run.sh:
 	@echo '#!/bin/bash' > run.sh
 	@echo './Beaglebone_Encoder_DAQ Encoder1.bin Encoder2.bin IRIG1.bin IRIG2.bin' >> run.sh
 	@chmod +x run.sh
-	@sudo chmod +s run.sh
 
 Beaglebone_Encoder_DAQ: Beaglebone_Encoder_DAQ.c
 	@gcc -o Beaglebone_Encoder_DAQ Beaglebone_Encoder_DAQ.c -lprussdrv
@@ -52,7 +51,7 @@ hwp-encoder-pru.service:
 	@echo '' >> hwp-encoder-pru.service
 	@echo '[Service]' >> hwp-encoder-pru.service
 	@echo "ExecStart=${PWD}/run.sh" >> hwp-encoder-pru.service
-	@echo "User=${USER}" >> hwp-encoder-pru.service
+	@echo "User=root" >> hwp-encoder-pru.service
 	@echo "WorkingDirectory=${PWD}/" >> hwp-encoder-pru.service
 	@echo 'Restart=always' >> hwp-encoder-pru.service
 	@echo 'RestartSec=10s' >> hwp-encoder-pru.service
@@ -76,4 +75,5 @@ reset:
 	@rm IRIG1.bin
 	@rm IRIG2.bin
 	@sudo systemctl disable hwp-encoder-pru.service
+	@sudo systemctl stop hwp-encoder-pru.service
 	@sudo rm /etc/systemd/system/hwp-encoder-pru.service
