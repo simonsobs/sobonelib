@@ -1,0 +1,11 @@
+[Unit]
+Description=sobonelib hwp_encoder process
+
+[Service]
+ExecStart=
+User=
+Restart=always
+RestartSec=10s
+
+[Install]
+WantedBy=multi-user.target
