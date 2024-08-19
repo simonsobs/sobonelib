@@ -106,6 +106,10 @@ class Gripper:
         """ Return the ALARM state """
         return self.CTL.ALARM(log=log)
 
+    def ALARM_GROUP(self, log=[]):
+        """ Return the ALARM state """
+        return self.CTL.ALARM_GROUP(log=log)
+
     def RESET(self, log=[]):
         """ Reset the ALARM """
         # Obtain the alarm group
