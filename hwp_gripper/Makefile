@@ -118,6 +118,7 @@ manager.sh:
 	@echo '    sleep 1' >> manager.sh
 	@echo '    systemctl start hwp-gripper-pru.service' >> manager.sh
 	@echo '    systemctl start hwp-gripper-control.service' >> manager.sh
+	@echo '    echo "Success"' >> manager.sh
 	@echo 'else' >> manager.sh
 	@echo '    echo "Unrecognized command"' >> manager.sh
 	@echo 'fi' >> manager.sh

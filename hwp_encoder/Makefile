@@ -92,6 +92,7 @@ manager.sh:
 	@echo '    systemctl stop hwp-encoder-pru.service' >> manager.sh
 	@echo '    sleep 1' >> manager.sh
 	@echo '    systemctl start hwp-encoder-pru.service' >> manager.sh
+	@echo '    echo "Success"' >> manager.sh
 	@echo 'else' >> manager.sh
 	@echo '    echo "Unrecognized command"' >> manager.sh
 	@echo 'fi' >> manager.sh
