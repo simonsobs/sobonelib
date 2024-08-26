@@ -41,7 +41,7 @@ control/run.sh: control/gripper_server.py
 	@echo '/usr/bin/python3 gripper_server.py' >> control/run.sh
 	@chmod +x control/run.sh
 
-pru/run.sh: pru/BeagleboneGripper pru/Encdoer1.bin pru/Encoder2.bin pru/Limit1.bin pru/Limit2.bin
+pru/run.sh: pru/BeagleboneGripper pru/Encoder1.bin pru/Encoder2.bin pru/Limit1.bin pru/Limit2.bin
 	@chmod +x pru/pinconfig
 	@echo '#!/bin/bash' > pru/run.sh
 	@echo './BeagleboneGripper Encoder1.bin Encoder2.bin Limit1.bin Limit2.bin' >> pru/run.sh
