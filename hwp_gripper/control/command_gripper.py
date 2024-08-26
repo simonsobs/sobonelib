@@ -68,7 +68,7 @@ class Command:
             print(result)
             return {'result': result, 'log': log}
         elif cmd == 'ALARM_GROUP':
-            result, log = self.GPR.ALARM_STATE(log=[])
+            result, log = self.GPR.ALARM_GROUP(log=[])
             self._print_log(log)
             print(result)
             return {'result': result, 'log': log}
