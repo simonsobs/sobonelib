@@ -13,9 +13,11 @@ hwp-gripper-control.service:
 	@echo 'Description=hwp gripper control process' >> hwp-gripper-control.service
 	@echo '' >> hwp-gripper-control.service
 	@echo '[Service]' >> hwp-gripper-control.service
-	@echo "ExecStart=${PWD}/control/run.sh" >> hwp-gripper-control.service
-	@echo "User=root" >> hwp-gripper-control.service
-	@echo "WorkingDirectory=${PWD}/control/" >> hwp-gripper-control.service
+	@echo Environment=\"$$(awk '/PRU_PORT/ {print}' config.txt)\" >> hwp-gripper-control.service
+	@echo Environment=\"$$(awk '/CONTROL_PORT/ {print}' config.txt)\" >> hwp-gripper-control.service
+	@echo 'ExecStart=${PWD}/control/run.sh' >> hwp-gripper-control.service
+	@echo 'User=root' >> hwp-gripper-control.service
+	@echo 'WorkingDirectory=${PWD}/control/' >> hwp-gripper-control.service
 	@echo 'Restart=always' >> hwp-gripper-control.service
 	@echo 'RestartSec=10s' >> hwp-gripper-control.service
 	@echo '' >> hwp-gripper-control.service
@@ -27,9 +29,10 @@ hwp-gripper-pru.service:
 	@echo 'Description=hwp gripper pru process' >> hwp-gripper-pru.service
 	@echo '' >> hwp-gripper-pru.service
 	@echo '[Service]' >> hwp-gripper-pru.service
-	@echo "ExecStart=${PWD}/pru/run.sh" >> hwp-gripper-pru.service
-	@echo "User=root" >> hwp-gripper-pru.service
-	@echo "WorkingDirectory=${PWD}/pru/" >> hwp-gripper-pru.service
+	@echo Environment=\"$$(awk '/PRU_PORT/ {print}' config.txt)\" >> hwp-gripper-pru.service
+	@echo 'ExecStart=${PWD}/pru/run.sh' >> hwp-gripper-pru.service
+	@echo 'User=root' >> hwp-gripper-pru.service
+	@echo 'WorkingDirectory=${PWD}/pru/' >> hwp-gripper-pru.service
 	@echo 'Restart=always' >> hwp-gripper-pru.service
 	@echo 'RestartSec=10s' >> hwp-gripper-pru.service
 	@echo '' >> hwp-gripper-pru.service
@@ -133,6 +136,7 @@ clean:
 reset:
 	@rm -f control/run.sh
 	@rm -f pru/run.sh
+	@rm -f manager.sh
 	@rm -f pru/BeagleboneGripper
 	@rm -f pru/Encoder1.bin
 	@rm -f pru/Encoder2.bin

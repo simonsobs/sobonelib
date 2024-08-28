@@ -188,7 +188,7 @@ class GripperServer(object):
 
 
 if __name__ == '__main__':
-    server = GripperServer(8040, 8041)
+    server = GripperServer(int(os.environ['PRU_PORT']), int(os.environ['CONTROL_PORT']))
     print('Starting Server')
     while True:
         server.process_command()
