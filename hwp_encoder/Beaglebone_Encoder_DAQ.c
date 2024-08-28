@@ -24,9 +24,6 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 
-// Port used for the UDP connection
-#define PORT 8080
-
 // Below variables are defined in pruss_intc_mapping and prussdrv,
 // they are mapping interrupts from PRUs to ARM processor
 #define PRUSS_INTC_CUSTOM {   \
@@ -239,8 +236,8 @@ int main(int argc, char **argv) {
     }
     memset(&servaddr, 0, sizeof(servaddr));
     servaddr.sin_family = AF_INET;
-    servaddr.sin_port = htons(PORT);
-    inet_pton(AF_INET, "", &(servaddr.sin_addr.s_addr));
+    servaddr.sin_port = htons(atoi(getenv("PORT")));
+    inet_pton(AF_INET, getenv("HOST_IP"), &(servaddr.sin_addr.s_addr));
     setsockopt(sockfd, IPPROTO_IP, IP_TOS, &tos_write, sizeof(tos_write));
     getsockopt(sockfd, IPPROTO_IP, IP_TOS, &tos_read, &tos_read_len);
     printf("IP UDP TOS byte set to 0x%X\n", tos_read);

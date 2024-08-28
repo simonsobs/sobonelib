@@ -10,9 +10,11 @@ hwp-encoder-pru.service:
 	@echo 'Description=hwp encoder pru process' >> hwp-encoder-pru.service
 	@echo '' >> hwp-encoder-pru.service
 	@echo '[Service]' >> hwp-encoder-pru.service
-	@echo "ExecStart=${PWD}/run.sh" >> hwp-encoder-pru.service
-	@echo "User=root" >> hwp-encoder-pru.service
-	@echo "WorkingDirectory=${PWD}/" >> hwp-encoder-pru.service
+	@echo Environment=\"$$(awk '/PORT/ {print}' config.txt)\" >> hwp-encoder-pru.service
+	@echo Environment=\"$$(awk '/HOST_IP/ {print}' config.txt)\" >> hwp-encoder-pru.service
+	@echo 'ExecStart=${PWD}/run.sh' >> hwp-encoder-pru.service
+	@echo 'User=root' >> hwp-encoder-pru.service
+	@echo 'WorkingDirectory=${PWD}/' >> hwp-encoder-pru.service
 	@echo 'Restart=always' >> hwp-encoder-pru.service
 	@echo 'RestartSec=10s' >> hwp-encoder-pru.service
 	@echo '' >> hwp-encoder-pru.service
