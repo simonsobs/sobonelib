@@ -1,4 +1,11 @@
 __pycache__/
+hwp_encoder/run.sh
+hwp_encoder/manager.sh
+hwp_encoder/Beaglebone_Encoder_DAQ
+hwp_encoder/Encoder1.bin
+hwp_encoder/Encoder2.bin
+hwp_encoder/IRIG1.bin
+hwp_encoder/IRIG2.bin
 hwp_gripper/control/run.sh
 hwp_gripper/manager.sh
 hwp_gripper/pru/BeagleboneGripper
