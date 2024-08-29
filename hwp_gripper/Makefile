@@ -1,4 +1,4 @@
-all: run manager clean
+all: reset run manager clean
 
 run: hwp-gripper-control.service hwp-gripper-pru.service control/run.sh pru/run.sh
 	@sudo mv hwp-gripper-pru.service /etc/systemd/system/hwp-gripper-pru.service

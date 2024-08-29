@@ -1,4 +1,4 @@
-all: run manager clean
+all: reset run manager clean
 
 run: hwp-encoder-pru.service run.sh
 	@sudo mv hwp-encoder-pru.service /etc/systemd/system/hwp-encoder-pru.service

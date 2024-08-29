@@ -1,1 +1,9 @@
 __pycache__/
+hwp_gripper/control/run.sh
+hwp_gripper/manager.sh
+hwp_gripper/pru/BeagleboneGripper
+hwp_gripper/pru/Encoder1.bin
+hwp_gripper/pru/Encoder2.bin
+hwp_gripper/pru/Limit1.bin
+hwp_gripper/pru/Limit2.bin
+hwp_gripper/pru/run.sh
