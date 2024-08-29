@@ -55,8 +55,8 @@ iface usb0 inet static
 
 #### Building sobonelib/hwp_encoder
 - Navigate into the hwp_encoder subdirectory `cd sobonelib/hwp_encoder`
-- Edit the `config.txt` file so that the `COM_PORT` and `HOST_IP` match your agent setup
-  - By default `COM_PORT` should be 8080 for encoder1 and 8081 for encoder2
+- Edit the `config.txt` file so that the `PORT` and `HOST_IP` match your agent setup
+  - By default `PORT` should be 8080 for encoder1 and 8081 for encoder2
   - `HOST_IP` is the IP address of the node running the encoder OCS agent
  - With the configuration file set, run the command `make`.
    - This will both compile the code and instantiate the systemctl services
