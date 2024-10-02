@@ -213,8 +213,8 @@ int main(void) {
     // Initialize two IRIG packets
     // Set IRIG headers for both IRIG packets
     irig_packets[0].header = 0xCAFF;
-    irig_packets[0].header = 0xCAFF;
-    irig_packets[1].version = 1;
+    irig_packets[1].header = 0xCAFF;
+    irig_packets[0].version = 1;
     irig_packets[1].version = 1;
 
     // Sample for DAQ_HOURS number of hours
