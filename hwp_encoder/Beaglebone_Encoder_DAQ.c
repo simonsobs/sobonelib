@@ -19,7 +19,7 @@
 #include <pruss_intc_mapping.h>
 #include <string.h>
 // The rest of these libraries are for UDP service
-#include <sys/types.h> 
+#include <sys/types.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
@@ -82,7 +82,11 @@ volatile int32_t* init_prumem()
 // the number of times the counter has overflowed
 struct EncoderInfo {
     unsigned long int header;
+    unsigned long int version;
+    unsigned long int num_samples;
     unsigned long int quad;
+    unsigned long int packet_count;
+    unsigned long int buffer_reset_counter;
     unsigned long int clock[ENCODER_COUNTER_SIZE];
     unsigned long int clock_overflow[ENCODER_COUNTER_SIZE];
     unsigned long int count[ENCODER_COUNTER_SIZE];
@@ -91,8 +95,10 @@ struct EncoderInfo {
 // IRIG packet
 struct IrigInfo{
     unsigned long int header;
+    unsigned long int version;
     unsigned long int clock;
     unsigned long int clock_overflow;
+    unsigned long int packet_count;
     unsigned long int info[10];
     unsigned long int synch[10];
     unsigned long int synch_overflow[10];
@@ -138,6 +144,8 @@ volatile struct TimeoutInfo timeout_packet[TIMEOUT_PACKETS_TO_SEND];
 unsigned long int offset;
 // For indexing over Encoder, IRIG, and Error packets to send out
 unsigned long int encd_ind, irig_ind, err_ind;
+// For counting over Encoder and IRIG packets to send out
+unsigned long int encd_pkt_cnt, irig_pkt_cnt;
 // Monitor the time since the packet was sent
 clock_t curr_time, encd_time, irig_time;
 // Creates socket to write UDP packets with
@@ -155,7 +163,7 @@ int main(int argc, char **argv) {
     // *** Configure the PRUs ***
     // Run a bash file to configure the input pins
     system("./pinconfig");
-    
+
     // Check command-line arguments
     if (argc != 5) {
         printf("Usage: %s Beaglebone_Encoder_DAQ Encoder1.bin \
@@ -195,15 +203,15 @@ int main(int argc, char **argv) {
     // *** Configure memory allocation ***
     // Sets memory to be used by data structures to 0
     memset((struct EncoderInfo *) &encoder_packets[0], 0, sizeof(*encoder_packets));
-    memset((struct EncoderInfo *) &encoder_packets[1], 0, sizeof(*encoder_packets));   
+    memset((struct EncoderInfo *) &encoder_packets[1], 0, sizeof(*encoder_packets));
     memset((struct IrigInfo *) &irig_packets[0], 0, sizeof(*irig_packets));
     memset((struct IrigInfo *) &irig_packets[1], 0, sizeof(*irig_packets));
     memset((struct ErrorInfo *) &error_packets[0], 0, sizeof(*error_packets));
     // Reset ready flags
     *encoder_ready = 0;
     *irig_ready = 0;
-    *error_ready = 0; 
- 
+    *error_ready = 0;
+
     // Load code to PRU1
     printf("Initializing PRU1\n");
     if (argc > 2) {
@@ -243,12 +251,14 @@ int main(int argc, char **argv) {
     printf("IP UDP TOS byte set to 0x%X\n", tos_read);
     printf("   Precedence = 0x%X\n", (tos_read >> 5) & 0x7);
     printf("   TOS = 0x%X\n", (tos_read >> 1) & 0xF);
-   
+
     // Set the timeout header
     timeout_packet->header = 0x1234;
     // Start stashing data into data objects to send over UDP
     encd_ind = 0;
     irig_ind = 0;
+    encd_pkt_cnt = 0;
+    irig_pkt_cnt = 0;
     curr_time = clock();
     // Continuously loops, looking for data, while PRUs are executing
     printf("Initializing DAQ\n");
@@ -280,40 +290,46 @@ int main(int argc, char **argv) {
         }
         // Send encoder data if the buffer is full
         if(encd_ind == ENCODER_PACKETS_TO_SEND) {
-            sendto(sockfd, (struct EncoderInfo *) encoder_to_send, sizeof(encoder_to_send), 
+            for (int i = 0; i < ENCODER_PACKETS_TO_SEND; i++){
+                encoder_to_send[i].packet_count = encd_pkt_cnt++;
+            }
+            sendto(sockfd, (struct EncoderInfo *) encoder_to_send, sizeof(encoder_to_send),
                    MSG_CONFIRM, (const struct sockaddr *) &servaddr, sizeof(servaddr));
             encd_ind = 0;
         }
-	// Send IRIG data if the buffer is full
+        // Send IRIG data if the buffer is full
         if(irig_ind == IRIG_PACKETS_TO_SEND) {
+            for (int i = 0; i < IRIG_PACKETS_TO_SEND; i++){
+                irig_to_send[i].packet_count = irig_pkt_cnt++;
+            }
             sendto(sockfd, (struct IRIGInfo *) irig_to_send, sizeof(irig_to_send),
                    MSG_CONFIRM, (const struct sockaddr *) &servaddr, sizeof(servaddr));
             irig_ind = 0;
         }
-	// Send error data if the buffer is full
+        // Send error data if the buffer is full
         if(err_ind == ERROR_PACKETS_TO_SEND) {
-	    printf("%lu: sending error packets\n", curr_time);
+            printf("%lu: sending error packets\n", curr_time);
             sendto(sockfd, (struct ErrorInfo *) error_to_send, sizeof(error_to_send), MSG_CONFIRM,
                    (const struct sockaddr *) &servaddr, sizeof(servaddr));
             err_ind = 0;
         }
-	    
+
         // Send timeout packets if no packets have been picked up in a while
         if(((double) (curr_time - encd_time))/CLOCKS_PER_SEC > ENCODER_TIMEOUT) {
-	    printf("%lu: sending encoder timeout packet\n", curr_time);
+            printf("%lu: sending encoder timeout packet\n", curr_time);
             timeout_packet->type = ENCODER_TIMEOUT_FLAG;
             sendto(sockfd, (struct TimeoutInfo *) &timeout_packet, sizeof(*timeout_packet),
                    MSG_CONFIRM, (const struct sockaddr *) &servaddr, sizeof(servaddr));
-	    // Reset the last time the encoder was monitored
-	    encd_time = curr_time;
+            // Reset the last time the encoder was monitored
+            encd_time = curr_time;
         }
         if(((double) (curr_time - irig_time))/CLOCKS_PER_SEC > IRIG_TIMEOUT) {
-	    printf("%lu: sending IRIG timeout packets\n", curr_time);
+            printf("%lu: sending IRIG timeout packets\n", curr_time);
             timeout_packet->type = IRIG_TIMEOUT_FLAG;
             sendto(sockfd, (struct TimeoutInfo *) &timeout_packet, sizeof(*timeout_packet),
                    MSG_CONFIRM, (const struct sockaddr *) &servaddr, sizeof(servaddr));
-	    // Reset the last time the IRIG was monitored
-	    irig_time = curr_time;
+            // Reset the last time the IRIG was monitored
+            irig_time = curr_time;
         }
     }
 
