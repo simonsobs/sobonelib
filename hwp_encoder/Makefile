@@ -6,6 +6,7 @@ run: hwp-encoder-pru.service run.sh
 	@sudo systemctl start hwp-encoder-pru.service
 
 hwp-encoder-pru.service:
+	@sed -i -e 's/\r$$//' config.txt
 	@echo '[Unit]' > hwp-encoder-pru.service
 	@echo 'Description=hwp encoder pru process' >> hwp-encoder-pru.service
 	@echo '' >> hwp-encoder-pru.service
@@ -22,6 +23,7 @@ hwp-encoder-pru.service:
 	@echo 'WantedBy=multi-user.target' >> hwp-encoder-pru.service
 
 run.sh: Beaglebone_Encoder_DAQ Encoder1.bin Encoder2.bin IRIG1.bin IRIG2.bin
+	@sed -i -e 's/\r$$//' pinconfig
 	@chmod +x pinconfig
 	@echo '#!/bin/bash' > run.sh
 	@echo './Beaglebone_Encoder_DAQ Encoder1.bin Encoder2.bin IRIG1.bin IRIG2.bin' >> run.sh
