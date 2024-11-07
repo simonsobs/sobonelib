@@ -116,6 +116,12 @@ reset:
 	@rm -f Encoder2.bin
 	@rm -f IRIG1.bin
 	@rm -f IRIG2.bin
+	@rm -f Encoder_Detection.out
+	@rm -f Encoder_Detection.obj
+	@rm -f Encoder.cmd
+	@rm -f IRIG_Detection.out
+	@rm -f IRIG_Detection.obj
+	@rm -f IRIG.cmd
 	@sudo systemctl disable hwp-encoder-pru.service 2> /dev/null || /bin/true
 	@sudo systemctl disable hwp-encoder-manager.service 2> /dev/null || /bin/true
 	@sudo systemctl stop hwp-encoder-pru.service 2> /dev/null || /bin/true

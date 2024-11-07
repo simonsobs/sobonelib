@@ -142,6 +142,10 @@ reset:
 	@rm -f pru/Encoder2.bin
 	@rm -f pru/Limit1.bin
 	@rm -f pru/Limit2.bin
+	@rm -f pru/GripperEncoder.out
+	@rm -f pru/Encoder.cmd
+	@rm -f pru/LimitSwitches.out
+	@rm -f pru/Limit.cmd
 	@sudo systemctl disable hwp-gripper-pru.service 2> /dev/null || /bin/true
 	@sudo systemctl disable hwp-gripper-control.service 2> /dev/null || /bin/true
 	@sudo systemctl disable hwp-gripper-manager.service 2> /dev/null || /bin/true
