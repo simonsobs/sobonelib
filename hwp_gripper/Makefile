@@ -13,8 +13,8 @@ hwp-gripper-control.service:
 	@echo 'Description=hwp gripper control process' >> hwp-gripper-control.service
 	@echo '' >> hwp-gripper-control.service
 	@echo '[Service]' >> hwp-gripper-control.service
-	@echo Environment=\"$$(awk -v RS='\r\n' '/PRU_PORT/ {print}' config.txt)\" >> hwp-gripper-control.service
-	@echo Environment=\"$$(awk -v RS='\r\n' '/CONTROL_PORT/ {print}' config.txt)\" >> hwp-gripper-control.service
+	@echo Environment=\"$$(awk '/PRU_PORT/ {print}' config.txt)\" >> hwp-gripper-control.service
+	@echo Environment=\"$$(awk '/CONTROL_PORT/ {print}' config.txt)\" >> hwp-gripper-control.service
 	@echo 'ExecStart=${PWD}/control/run.sh' >> hwp-gripper-control.service
 	@echo 'User=root' >> hwp-gripper-control.service
 	@echo 'WorkingDirectory=${PWD}/control/' >> hwp-gripper-control.service
@@ -29,7 +29,7 @@ hwp-gripper-pru.service:
 	@echo 'Description=hwp gripper pru process' >> hwp-gripper-pru.service
 	@echo '' >> hwp-gripper-pru.service
 	@echo '[Service]' >> hwp-gripper-pru.service
-	@echo Environment=\"$$(awk -v RS='\r\n' '/PRU_PORT/ {print}' config.txt)\" >> hwp-gripper-pru.service
+	@echo Environment=\"$$(awk '/PRU_PORT/ {print}' config.txt)\" >> hwp-gripper-pru.service
 	@echo 'ExecStart=${PWD}/pru/run.sh' >> hwp-gripper-pru.service
 	@echo 'User=root' >> hwp-gripper-pru.service
 	@echo 'WorkingDirectory=${PWD}/pru/' >> hwp-gripper-pru.service
