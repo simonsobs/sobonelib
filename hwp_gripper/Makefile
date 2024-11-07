@@ -9,6 +9,7 @@ run: hwp-gripper-control.service hwp-gripper-pru.service control/run.sh pru/run.
 	@sudo systemctl start hwp-gripper-control.service
 
 hwp-gripper-control.service:
+	@sed -i -e 's/\r$$//' config.txt
 	@echo '[Unit]' > hwp-gripper-control.service
 	@echo 'Description=hwp gripper control process' >> hwp-gripper-control.service
 	@echo '' >> hwp-gripper-control.service
@@ -25,6 +26,7 @@ hwp-gripper-control.service:
 	@echo 'WantedBy=multi-user.target' >> hwp-gripper-control.service
 
 hwp-gripper-pru.service:
+	@sed -i -e 's/\r$$//' config.txt
 	@echo '[Unit]' > hwp-gripper-pru.service
 	@echo 'Description=hwp gripper pru process' >> hwp-gripper-pru.service
 	@echo '' >> hwp-gripper-pru.service
@@ -45,6 +47,7 @@ control/run.sh: control/gripper_server.py
 	@chmod +x control/run.sh
 
 pru/run.sh: pru/BeagleboneGripper pru/Encoder1.bin pru/Encoder2.bin pru/Limit1.bin pru/Limit2.bin
+	@sed -i -e 's/\r$$//' pru/pinconfig
 	@chmod +x pru/pinconfig
 	@echo '#!/bin/bash' > pru/run.sh
 	@echo './BeagleboneGripper Encoder1.bin Encoder2.bin Limit1.bin Limit2.bin' >> pru/run.sh

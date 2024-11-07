@@ -204,18 +204,6 @@ int main(int argc, char **argv) {
     *irig_ready = 0;
     *error_ready = 0; 
  
-    // Load code to PRU1
-    printf("Initializing PRU1\n");
-    if (argc > 2) {
-        if (prussdrv_load_datafile(1, argv[2]) < 0) {
-            fprintf(stderr, "Error loading %s\n", argv[2]);
-            exit(-1);
-        }
-    }
-    if (prussdrv_exec_program(1, argv[1]) < 0) {
-        fprintf(stderr, "Error loading %s\n", argv[1]);
-       exit(-1);
-    }
     // Load code to PRU0
     printf("Initializing PRU0\n");
     if (argc == 5) {
@@ -227,6 +215,18 @@ int main(int argc, char **argv) {
     if (prussdrv_exec_program(0, argv[3]) < 0) {
         fprintf(stderr, "Error loading %s\n", argv[3]);
         exit(-1);
+    }
+    // Load code to PRU1
+    printf("Initializing PRU1\n");
+    if (argc > 2) {
+        if (prussdrv_load_datafile(1, argv[2]) < 0) {
+            fprintf(stderr, "Error loading %s\n", argv[2]);
+            exit(-1);
+        }
+    }
+    if (prussdrv_exec_program(1, argv[1]) < 0) {
+        fprintf(stderr, "Error loading %s\n", argv[1]);
+       exit(-1);
     }
 
     // *** Set up UDP connection ***
