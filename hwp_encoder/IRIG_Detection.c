@@ -319,7 +319,7 @@ int main(void) {
                             // INFO bit either a 1 or 0
                             ind = bit_position / 10;
                             info_offset = bit_position % 10;
-                            irig_packets[i].info[ind] &= ~(1 << info_offset);
+                            irig_packets[i].info[ind] &= ~((1 << info_offset) | (1 << 8));
                             irig_packets[i].info[ind] |= irig_bit_type << (info_offset);
                             bit_position += 1;
                         }
